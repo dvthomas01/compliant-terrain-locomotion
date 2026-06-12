@@ -195,6 +195,7 @@ class VideoRenderCallback(BaseCallback):
         max_ep_steps: int = 1000,   # safety cap per episode (= env max)
         save_dir: str = "renders",
         live_viewer: bool = False,
+        vecnorm=None,               # training VecNormalize: normalise eval obs with its running stats
         verbose: int = 0,
     ):
         super().__init__(verbose)
@@ -204,6 +205,7 @@ class VideoRenderCallback(BaseCallback):
         self._max_ep_steps = max_ep_steps
         self._save_dir     = save_dir
         self._live_viewer  = live_viewer
+        self._vecnorm      = vecnorm
         self._last_render  = 0
 
     def _on_step(self) -> bool:
@@ -225,7 +227,8 @@ class VideoRenderCallback(BaseCallback):
             obs, _ = env.reset(seed=ep)
             ep_len = 0
             for _ in range(self._max_ep_steps):
-                action, _ = self.model.predict(obs, deterministic=True)
+                policy_obs = self._vecnorm.normalize_obs(obs) if self._vecnorm is not None else obs
+                action, _ = self.model.predict(policy_obs, deterministic=True)
                 obs, _, terminated, truncated, _ = env.step(action)
                 frame = env.render()
                 if frame is not None:
@@ -263,7 +266,10 @@ class VideoRenderCallback(BaseCallback):
                 import time
                 t0 = time.time()
                 while v.is_running() and time.time() - t0 < 5.0:
-                    action, _ = self.model.predict(live_env._get_obs(), deterministic=True)
+                    obs = live_env._get_obs()
+                    if self._vecnorm is not None:
+                        obs = self._vecnorm.normalize_obs(obs)
+                    action, _ = self.model.predict(obs, deterministic=True)
                     live_env.step(action)
                     v.sync()
             live_env.close()

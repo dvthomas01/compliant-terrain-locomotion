@@ -27,6 +27,23 @@ ACTION_SCALE = 0.5   # max joint deviation from nominal (rad)
 
 FOOT_NAMES = ("FR", "FL", "RR", "RL")
 
+# --- Residual trajectory generator (PMTG trot prior, v14) -------------------------
+# Open-loop trot foot-trajectory the policy adds residuals on top of (Iscen 2018 PMTG /
+# Tan 2018 open-loop trot). A single phase φ advances at a fixed cadence; diagonal leg
+# pairs (FR+RL, FL+RR) cycle 180° out of phase. Each leg traces an ellipse in joint space:
+#   thigh (HFE) offset = stride·cos(θ)            → fore/aft leg swing (propulsion)
+#   calf  (KFE) offset = lift ·max(0, sin θ)      → knee flex during the swing half (clears ground)
+# Amplitude is scaled by min(1, |command|/ref) so at command 0 the legs hold the nominal
+# stand — the hard-won stable basin (v11) is preserved exactly (zero offset).
+# The policy sees (sin φ, cos φ) and outputs residual joint targets, so it only has to
+# modulate a gait that is propulsive by construction. Pure-RL never discovered this (v8–v13).
+_TG_FREQ_HZ    = 1.5    # gait cycle frequency → Δφ = 2π·f·dt = 0.1885 rad/policy-step at 50 Hz
+_TG_STRIDE_AMP = 0.20   # thigh (HFE) fore/aft swing amplitude (rad)
+_TG_LIFT_AMP   = -0.35  # calf (KFE) swing-phase flex amplitude (rad); sign makes the foot LIFT (verified, see verify_tg.py)
+_TG_REF_SPEED  = 0.2    # command magnitude at which the gait amplitude reaches full scale
+# Per-leg phase offsets (order FR, FL, RR, RL): trot = diagonal pairs together, 180° apart
+_TG_PHASE_OFFSET = np.array([0.0, np.pi, np.pi, 0.0])
+
 # Reward weights — all multiplied by ctrl_dt inside step() for rate-independence
 _W_LIN_VEL     = 1.5    # raised from 1.0: forward progress matters more
 _W_ANG_VEL     = 0.5
@@ -74,6 +91,7 @@ class Go1BaseEnv(gym.Env):
         render_mode: str | None = None,
         target_lin_vel: tuple[float, float] = (0.5, 0.0),
         target_ang_vel: float = 0.0,
+        use_tg: bool = True,
     ):
         super().__init__()
         self.render_mode = render_mode
@@ -86,6 +104,11 @@ class Go1BaseEnv(gym.Env):
 
         self._ctrl_dt    = 0.02  # 50 Hz
         self._n_substeps = round(self._ctrl_dt / self._model.opt.timestep)
+
+        # Residual trajectory generator (v14): open-loop trot phase clock
+        self._use_tg    = use_tg
+        self._phase     = 0.0
+        self._tg_dphase = 2.0 * np.pi * _TG_FREQ_HZ * self._ctrl_dt
 
         self._trunk_id = mujoco.mj_name2id(
             self._model, mujoco.mjtObj.mjOBJ_BODY, "trunk"
@@ -123,8 +146,13 @@ class Go1BaseEnv(gym.Env):
     # ------------------------------------------------------------------
 
     def _obs_space(self) -> spaces.Box:
-        """Return the observation space. Override in Policy B subclass."""
-        return spaces.Box(low=-np.inf, high=np.inf, shape=(47,), dtype=np.float32)
+        """Return the observation space. Override in Policy B subclass.
+
+        49D = 47 base state + 2 gait-phase clock (sin φ, cos φ). The phase is an
+        open-loop trajectory-generator clock, NOT proprioceptive history, so the
+        'no history' isolation of Policy A vs B is preserved (both policies share
+        the same TG; only the training terrain differs)."""
+        return spaces.Box(low=-np.inf, high=np.inf, shape=(49,), dtype=np.float32)
 
     def _get_obs(self) -> np.ndarray:
         """Build observation. Override in Policy B subclass to add history."""
@@ -151,7 +179,30 @@ class Go1BaseEnv(gym.Env):
             joint_pos_rel,          # 12 — joint angles relative to home stance
             joint_vel,              # 12 — joint velocities
             self._prev_action,      # 12 — last action (normalised)
-        ])  # 47 total
+            [np.sin(self._phase), np.cos(self._phase)],  # 2 — gait-phase clock (TG)
+        ])  # 49 total
+
+    # ------------------------------------------------------------------
+    # Residual trajectory generator (PMTG trot prior)
+    # ------------------------------------------------------------------
+
+    def _tg_offsets(self) -> np.ndarray:
+        """Open-loop trot joint-target offsets (12,) for the current phase.
+
+        Returns zeros when the TG is disabled or the commanded speed is 0 (so the
+        nominal stand is held exactly). Thigh joints swing fore/aft (cos), calf joints
+        flex during the swing half (sin>0) to lift the foot; amplitude scales with the
+        command. Leg order matches qpos: FR, FL, RR, RL × (hip, thigh, calf)."""
+        if not self._use_tg:
+            return np.zeros(12)
+        scale = min(1.0, abs(float(self._target_lin_vel[0])) / _TG_REF_SPEED)
+        if scale == 0.0:
+            return np.zeros(12)
+        theta = self._phase + _TG_PHASE_OFFSET                 # (4,) per-leg phase
+        offsets = np.zeros((4, 3))
+        offsets[:, 1] = _TG_STRIDE_AMP * np.cos(theta)         # thigh (HFE): fore/aft swing
+        offsets[:, 2] = _TG_LIFT_AMP * np.maximum(0.0, np.sin(theta))  # calf (KFE): swing-phase lift
+        return (offsets * scale).reshape(12)
 
     # ------------------------------------------------------------------
     # Gymnasium API
@@ -168,6 +219,8 @@ class Go1BaseEnv(gym.Env):
         self._feet_contact   = self._foot_contacts()
         self._feet_air_time  = np.zeros(4, dtype=np.float64)
         self._step_count     = 0
+        # randomise the gait phase so the policy experiences all phases across episodes
+        self._phase          = float(self.np_random.uniform(0.0, 2.0 * np.pi))
 
         self._reset_terrain()
 
@@ -175,11 +228,14 @@ class Go1BaseEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         action = np.clip(action, -1.0, 1.0).astype(np.float64)
-        self._data.ctrl[:] = NOMINAL_JOINT_POS + action * ACTION_SCALE
+        # ctrl = nominal stance + open-loop trot trajectory (current phase) + policy residual
+        self._data.ctrl[:] = NOMINAL_JOINT_POS + self._tg_offsets() + action * ACTION_SCALE
 
         for _ in range(self._n_substeps):
             mujoco.mj_step(self._model, self._data)
 
+        # advance the gait clock for the next observation/control step
+        self._phase = (self._phase + self._tg_dphase) % (2.0 * np.pi)
         self._step_count += 1
 
         # --- feet air-time tracking ---

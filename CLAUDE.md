@@ -89,15 +89,23 @@ quadruped-compliance/
 ## Key Architectural Decisions
 
 ### Observation Spaces (Different by Design)
-- **Policy A: 47D** — current state only (velocity commands, gravity, angular/linear velocity, joint positions/velocities, previous action). No history. Forces Policy A to specialize for rigid terrain.
-- **Policy B: 87D** — adds foot position history (24D at t, t-10, t-20), foot velocity (12D), foot contact states (4D). History is *required* per Kim & Lee 2021 — without it, the policy learns to stand still rather than walk on compliant terrain.
+- **Policy A: 49D** — current state only (velocity commands, gravity, angular/linear velocity, joint positions/velocities, previous action) **+ 2D gait-phase clock (sin φ, cos φ)**. No proprioceptive history. Forces Policy A to specialize for rigid terrain.
+- **Policy B: 89D** — Policy A's 49D + foot position history (24D at t, t-10, t-20), foot velocity (12D), foot contact states (4D). History is *required* per Kim & Lee 2021 — without it, the policy learns to stand still rather than walk on compliant terrain.
+
+> **v14 change (2026-06-12):** both observation spaces grew by 2 (47→49, 87→89) when the PMTG gait prior was added (see *PMTG Gait Prior* below). The 2 extra dims are the trajectory-generator phase `(sin φ, cos φ)` — an **open-loop clock, NOT proprioceptive history**, so the "Policy A has no history" isolation still holds. Both policies share the identical TG, so the A-vs-B ablation stays clean: **only the training terrain differs.**
 
 **Do NOT include** solimp/solref values or terrain labels in observations — the policy must infer compliance from movement history.
 
 ### Control
-- Policy outputs 12 joint position targets, clipped to ±0.5 rad from nominal.
-- PD controller converts to torques (Kp=20, Kd=0.5).
+- Policy outputs 12 **residual** joint position targets, clipped to ±0.5 rad, added on top of the nominal stance **and the PMTG trot trajectory** (see below): `ctrl = NOMINAL + TG(φ) + action·0.5`.
+- MuJoCo position actuators with `kp=100, kd=0` (from the Go1 XML — note: NOT the "Kp=20/Kd=0.5" originally written here; the autoloop's zero-action test confirmed kp=100/kd=0 holds a perfect 1000-step stand).
 - 50 Hz policy, 500 Hz simulation (10 sub-steps per policy step).
+
+### PMTG Gait Prior (v14 — required for forward locomotion)
+The autonomous loop (v8–v13) proved **pure-RL gait discovery does not emerge here**: balance was solved (robot holds the full episode) but it never found a *propulsive* gait — it stands or steps in place (vel_x ≈ 0 vs 0.2 target). A residual trajectory generator (PMTG; Iscen 2018 / Tan 2018 open-loop trot) in `base_env.py` fixes this:
+- An open-loop phase φ advances at a fixed cadence (`_TG_FREQ_HZ=1.5`). Diagonal leg pairs (FR+RL, FL+RR) cycle 180° apart; each leg traces an ellipse: thigh/HFE fore-aft swing (`cos θ`) + calf/KFE swing-phase knee flex (`sin θ>0`) to clear ground.
+- Amplitude scales with `min(1, |command|/0.2)` so at **command 0 the TG is OFF** — the hard-won stable stand is preserved exactly.
+- The policy sees `(sin φ, cos φ)` and outputs residuals only — it modulates a gait that is **propulsive by construction**, verified kinematically by `training/verify_tg.py` (feet lift, correct trot phasing, foot-x ∝ −cos φ = forward).
 
 ### Reward Function (9 terms, identical for both policies)
 All terms multiplied by `dt` for rate-independence. Penalty terms multiplied by curriculum coefficient `k_t`:
