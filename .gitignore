@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environment
+.venv/
+
+# Training artifacts (large, regenerable)
+runs/
+checkpoints/
+renders/
+
+# Project memory / session state (not for sharing)
+memory-bank/
+.claude/
+
+# Source papers (third-party, copyrighted, large) — md summaries are tracked
+papers/*.pdf
+
+# Images / preview assets not needed to run the sim
+*.png
+
+# macOS
+.DS_Store
