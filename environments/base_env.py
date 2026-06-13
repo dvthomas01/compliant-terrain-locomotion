@@ -23,7 +23,11 @@ NOMINAL_JOINT_POS = np.array([
     0.0,  0.9, -1.8,   # RL
 ], dtype=np.float64)
 
-ACTION_SCALE = 0.5   # max joint deviation from nominal (rad)
+ACTION_SCALE = 0.25  # v16: residual joint deviation (rad), halved from 0.5. With the PMTG trot
+                     # supplying the gait, the policy should only make SMALL corrections — at ±0.5
+                     # it suppressed the TG foot-lift (feet_in_contact 3.12 vs a trot's ~2.0),
+                     # capping stride/speed. 0.25 < the TG lift amp (0.35) so it can no longer
+                     # fully cancel the lift, letting the propulsive gait dominate.
 
 FOOT_NAMES = ("FR", "FL", "RR", "RL")
 
@@ -39,7 +43,11 @@ FOOT_NAMES = ("FR", "FL", "RR", "RL")
 # modulate a gait that is propulsive by construction. Pure-RL never discovered this (v8–v13).
 _TG_FREQ_HZ    = 1.5    # gait cycle frequency → Δφ = 2π·f·dt = 0.1885 rad/policy-step at 50 Hz
 _TG_STRIDE_AMP = 0.20   # thigh (HFE) fore/aft swing amplitude (rad)
-_TG_LIFT_AMP   = -0.35  # calf (KFE) swing-phase flex amplitude (rad); sign makes the foot LIFT (verified, see verify_tg.py)
+_TG_LIFT_AMP   = -0.55  # calf (KFE) swing-phase flex amplitude (rad); sign makes the foot LIFT (verified).
+                        # v18: raised 0.35→0.55. With ACTION_SCALE 0.25 the residual could cancel most of
+                        # a 0.35 lift, so swing feet barely cleared (feet_in_contact 2.66–3.33 > the 2.5
+                        # trot ceiling). 0.55 leaves ≥0.30 net lift after max cancellation → feet clear →
+                        # duty factor ~50% → feet_in_contact → ~2.
 _TG_REF_SPEED  = 0.2    # command magnitude at which the gait amplitude reaches full scale
 # Per-leg phase offsets (order FR, FL, RR, RL): trot = diagonal pairs together, 180° apart
 _TG_PHASE_OFFSET = np.array([0.0, np.pi, np.pi, 0.0])
@@ -62,6 +70,11 @@ _W_PITCH       = 25.0   # v6: dense pitch penalty beyond the trot lean (outside 
 _W_FWD_PROGRESS = 8.0   # v7: dense monotonic "move forward" reward (outside k-curriculum); v13 raised 4→8
 _W_OVERSPEED   = 3.0    # v8: linear penalty for exceeding the command (kills the sprint)
 _FEET_AIR_REF_SPEED = 0.2  # v10: feet-air-time reward scales with command up to this speed
+# v17: air-time threshold lowered 0.5→0.2 s. The bonus is (air_time − threshold) per landing; the
+# 1.5 Hz TG trot has ~0.33 s swings, so a 0.5 s threshold made every normal step score negative,
+# PENALISING the trot and pushing feet to stay planted (feet_in_contact 2.66 > the 2.5 trot ceiling).
+# 0.2 s gives a 0.33 s swing a positive bonus, rewarding clean stepping without rewarding tiny shuffles.
+_FEET_AIR_THRESHOLD = 0.2
 
 # v6 tracking / pitch shaping
 # _SIGMA_SQ_VEL tightened 0.25 → 0.04 (σ≈0.2): at the 0.2 m/s target the old σ≈0.5
@@ -71,6 +84,13 @@ _FEET_AIR_REF_SPEED = 0.2  # v10: feet-air-time reward scales with command up to
 #   pitch 0.40 → -33% of max tracking   0.35 → -13%   0.30 → -3%   ≤0.26 → 0 (protects healthy lean)
 _SIGMA_SQ_VEL    = 0.04
 _PITCH_FREE_ZONE = 0.26   # rad (~15°): no penalty inside the nominal forward trot lean
+
+# v15 dense ROLL penalty (mirror of the pitch penalty). v8–v14 controlled pitch tightly
+# (W=25 → pitch ≈ -0.035) but had NO equivalent roll term, so the robot braced in a
+# persistent ~15° side-tilt (roll ≈ -0.27) — a stable sprawl that lets it survive without
+# trotting. A forward trot needs a pitch lean but ZERO roll, so the free zone is small.
+_W_ROLL          = 25.0
+_ROLL_FREE_ZONE  = 0.10   # rad (~6°): no natural reason for static roll in a straight trot
 
 _TARGET_BASE_HEIGHT  = 0.27    # Go1 nominal trunk z in standing keyframe (metres)
 _TERMINATION_PENALTY = -20.0   # one-off penalty added when robot falls or tips over
@@ -243,7 +263,7 @@ class Go1BaseEnv(gym.Env):
         just_landed = (~self._feet_contact) & new_contact
         self._feet_air_time[~new_contact] += self._ctrl_dt
         self._feet_air_time[new_contact]   = 0.0
-        feet_air_bonus = float(np.sum(self._feet_air_time[just_landed] - 0.5))
+        feet_air_bonus = float(np.sum(self._feet_air_time[just_landed] - _FEET_AIR_THRESHOLD))
         self._feet_contact = new_contact
 
         reward, info = self._compute_reward(action, feet_air_bonus)
@@ -330,6 +350,12 @@ class Go1BaseEnv(gym.Env):
         excess_pitch   = max(0.0, abs(pitch) - _PITCH_FREE_ZONE)
         r_pitch_pen    = -_W_PITCH * (excess_pitch ** 2) * dt
 
+        # --- roll penalty (v15, NOT curriculum-scaled — mirror of the pitch penalty) ---
+        # Kills the persistent ~15° tilt-brace (roll ≈ -0.27 in v11–v14) the robot used to
+        # survive without trotting. Small free zone: a straight trot should hold roll ≈ 0.
+        excess_roll    = max(0.0, abs(roll) - _ROLL_FREE_ZONE)
+        r_roll_pen     = -_W_ROLL * (excess_roll ** 2) * dt
+
         # --- forward-progress reward (v7, NOT curriculum-scaled) ---
         # Dense, monotonic "always move forward" signal the tracking Gaussian cannot give:
         # the Gaussian hands out exp(-0.2²/σ²) ≈ 37% reward for standing still at v=0, so once
@@ -371,7 +397,7 @@ class Go1BaseEnv(gym.Env):
 
         total = (
             r_lin_vel + r_ang_vel + r_feet_air + r_base_height + r_alive
-            + r_ang_vel_xy + r_orientation + r_backward_vel + r_pitch_pen
+            + r_ang_vel_xy + r_orientation + r_backward_vel + r_pitch_pen + r_roll_pen
             + r_fwd_progress + r_overspeed   # stability + direction: always active
             + k * (r_lin_vel_z + r_joint_mot                  # efficiency: k-scaled
                    + r_torques + r_action_rate + r_collision)
@@ -387,6 +413,7 @@ class Go1BaseEnv(gym.Env):
             "r_orientation":      r_orientation,
             "r_backward_vel":     r_backward_vel,
             "r_pitch_pen":        r_pitch_pen,
+            "r_roll_pen":         r_roll_pen,
             "r_fwd_progress":     r_fwd_progress,
             "r_overspeed":        r_overspeed,
             "r_joint_mot":        r_joint_mot,
