@@ -295,7 +295,7 @@ class RewardLoggingCallback(BaseCallback):
         "base_height", "penalty_scale", "stability_scale",
         "pitch", "roll", "pitch_vel", "roll_vel",
         "contact_FR", "contact_FL", "contact_RR", "contact_RL", "feet_in_contact",
-        "term_height", "term_roll", "term_pitch",
+        "term_height", "term_roll", "term_pitch", "terrain_level",
     )
 
     def __init__(self, verbose: int = 0):
