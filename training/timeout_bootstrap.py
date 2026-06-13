@@ -286,7 +286,7 @@ class RewardLoggingCallback(BaseCallback):
 
     _REWARD_KEYS = (
         "r_lin_vel", "r_lin_vel_ungated", "r_ang_vel", "r_lin_vel_z", "r_ang_vel_xy",
-        "r_orientation", "r_backward_vel", "r_pitch_pen", "r_fwd_progress", "r_overspeed",
+        "r_orientation", "r_backward_vel", "r_pitch_pen", "r_roll_pen", "r_fwd_progress", "r_overspeed",
         "r_joint_mot", "r_torques", "r_action_rate", "r_collision", "r_feet_air",
         "r_base_height", "r_alive", "r_termination",
     )
