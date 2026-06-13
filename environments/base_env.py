@@ -43,7 +43,10 @@ FOOT_NAMES = ("FR", "FL", "RR", "RL")
 # modulate a gait that is propulsive by construction. Pure-RL never discovered this (v8–v13).
 _TG_FREQ_HZ    = 1.5    # gait cycle frequency → Δφ = 2π·f·dt = 0.1885 rad/policy-step at 50 Hz
 _TG_STRIDE_AMP = 0.20   # thigh (HFE) fore/aft swing amplitude (rad)
-_TG_LIFT_AMP   = -0.55  # calf (KFE) swing-phase flex amplitude (rad); sign makes the foot LIFT (verified).
+_TG_LIFT_AMP   = -0.62  # v24: −0.55→−0.62. After posture was pinned (v20–v23) feet_in_contact sat at
+                        # 2.625 (just over the 2.5 ceiling); more swing-foot clearance shortens stance →
+                        # ~50% duty. Proven lever (v18: 0.35→0.55 dropped feet 3.33→2.38).
+                        # calf (KFE) swing-phase flex amplitude (rad); sign makes the foot LIFT (verified).
                         # v18: raised 0.35→0.55. With ACTION_SCALE 0.25 the residual could cancel most of
                         # a 0.35 lift, so swing feet barely cleared (feet_in_contact 2.66–3.33 > the 2.5
                         # trot ceiling). 0.55 leaves ≥0.30 net lift after max cancellation → feet clear →
@@ -64,11 +67,16 @@ _W_TORQUES     = 2e-5
 _W_ACTION_RATE = 0.25
 _W_COLLISION   = 0.001
 _W_FEET_AIR    = 5.0    # raised from 2.0: stronger gait-cycle incentive
-_W_BASE_HEIGHT = 2.0    # penalises crouching below nominal stance height
+_W_BASE_HEIGHT = 12.0   # v21: 6→12 AND reshaped to one-sided LINEAR (see step()). v19 quadratic W=6
+                        # reached only 0.25; v20's upright constraint dropped it to 0.229 (below gate
+                        # floor). Linear W=12 ≈ 0.0096/step at the 0.04 m crouch — real upward pressure.
 _W_ALIVE       = 0.5    # constant per-step bonus for surviving upright
 _W_PITCH       = 25.0   # v6: dense pitch penalty beyond the trot lean (outside k-curriculum)
 _W_FWD_PROGRESS = 8.0   # v7: dense monotonic "move forward" reward (outside k-curriculum); v13 raised 4→8
-_W_OVERSPEED   = 3.0    # v8: linear penalty for exceeding the command (kills the sprint)
+_W_OVERSPEED   = 5.0    # v8: linear penalty for exceeding the command. v19: 3→5 to hold a consistent
+                        # 0.2 m/s (v18 drifted to 0.233) — sharper upper bound on forward speed.
+_W_LATERAL     = 8.0    # v19: penalty on body-frame lateral velocity (vy²) to stop the diagonal veer
+                        # (a straight forward walk should have ~0 sideways velocity).
 _FEET_AIR_REF_SPEED = 0.2  # v10: feet-air-time reward scales with command up to this speed
 # v17: air-time threshold lowered 0.5→0.2 s. The bonus is (air_time − threshold) per landing; the
 # 1.5 Hz TG trot has ~0.33 s swings, so a 0.5 s threshold made every normal step score negative,
@@ -89,8 +97,17 @@ _PITCH_FREE_ZONE = 0.26   # rad (~15°): no penalty inside the nominal forward t
 # (W=25 → pitch ≈ -0.035) but had NO equivalent roll term, so the robot braced in a
 # persistent ~15° side-tilt (roll ≈ -0.27) — a stable sprawl that lets it survive without
 # trotting. A forward trot needs a pitch lean but ZERO roll, so the free zone is small.
-_W_ROLL          = 25.0
-_ROLL_FREE_ZONE  = 0.10   # rad (~6°): no natural reason for static roll in a straight trot
+_W_ROLL          = 100.0  # v23: 70→100. v22's yaw penalty reorganized the gait and roll crept to 0.096
+                          # (just over the 0.08 gate); roll is highly responsive to this weight, and yaw
+                          # is now held by its own penalty so re-suppressing roll won't un-pin yaw.
+                          # (v20: 25→70 first killed the persistent banked roll −0.20 that drove the veer.)
+_W_YAW_RATE      = 50.0   # v22: dense quadratic yaw-rate penalty (mirror of roll/pitch). The soft
+                          # Gaussian yaw-tracking reward is toothless (92% reward even at yaw 0.14), so
+                          # yaw drifted (sign-flipping seed-dependent veer). Command yaw is always 0 →
+                          # no free zone. yaw_rate is already in the obs → no obs change / ablation-safe.
+_ROLL_FREE_ZONE  = 0.05   # rad (~3°): v19 tightened 0.10→0.05. v18 still ran at roll −0.16 (an
+                          # asymmetric, sideways-pushing stance that drives the diagonal veer); a
+                          # tighter free zone forces a symmetric upright trot that tracks straight.
 
 _TARGET_BASE_HEIGHT  = 0.27    # Go1 nominal trunk z in standing keyframe (metres)
 _TERMINATION_PENALTY = -20.0   # one-off penalty added when robot falls or tips over
@@ -343,6 +360,11 @@ class Go1BaseEnv(gym.Env):
         backward_speed = max(0.0, -float(lin_vel[0]))
         r_backward_vel = -_W_BACKWARD_VEL * backward_speed * dt
 
+        # --- lateral velocity penalty (v19, NOT curriculum-scaled) ---
+        # A straight forward walk has ~0 body-frame sideways velocity; penalising vy² removes the
+        # diagonal veer (the tracking Gaussian already includes vy but too softly to hold a heading).
+        r_lateral      = -_W_LATERAL * (float(lin_vel[1]) ** 2) * dt
+
         # --- pitch penalty (v6, NOT curriculum-scaled — dense gradient before the cliff) ---
         # The multiplicative stability gate goes toothless when tracking → 0 (overshoot + pitched);
         # this absolute quadratic penalty bites in exactly that regime. Free zone protects the
@@ -355,6 +377,12 @@ class Go1BaseEnv(gym.Env):
         # survive without trotting. Small free zone: a straight trot should hold roll ≈ 0.
         excess_roll    = max(0.0, abs(roll) - _ROLL_FREE_ZONE)
         r_roll_pen     = -_W_ROLL * (excess_roll ** 2) * dt
+
+        # --- yaw-rate penalty (v22, NOT curriculum-scaled — mirror of roll/pitch) ---
+        # Pins the heading: command yaw is always 0, so a straight walk should hold yaw_rate ≈ 0. The
+        # soft Gaussian yaw-tracking reward could not (92% reward even at yaw 0.14 rad/s) → seed-dependent
+        # drift. No free zone. yaw_rate is already observed, so the policy can drive it to zero.
+        r_yaw_pen      = -_W_YAW_RATE * (float(ang_vel[2]) ** 2) * dt
 
         # --- forward-progress reward (v7, NOT curriculum-scaled) ---
         # Dense, monotonic "always move forward" signal the tracking Gaussian cannot give:
@@ -391,13 +419,16 @@ class Go1BaseEnv(gym.Env):
         # a proper stepping gait is rewarded only when actually moving. Scales live with the curriculum.
         feet_air_gate = min(1.0, abs(float(self._target_lin_vel[0])) / _FEET_AIR_REF_SPEED)
         r_feet_air    = feet_air_bonus * _W_FEET_AIR * dt * feet_air_gate
-        height_err    = float(self._data.qpos[2]) - _TARGET_BASE_HEIGHT
-        r_base_height = -(height_err ** 2) * _W_BASE_HEIGHT * dt
+        # v21: one-sided LINEAR crouch penalty (was two-sided quadratic). The quadratic was toothless
+        # near target — at the 0.04 m v20 crouch it paid only ~0.0002/step, so height sagged to 0.229
+        # regardless of weight. Linear gives a constant upward gradient below 0.27 and 0 above (no tiptoe).
+        crouch        = max(0.0, _TARGET_BASE_HEIGHT - float(self._data.qpos[2]))
+        r_base_height = -_W_BASE_HEIGHT * crouch * dt
         r_alive       = _W_ALIVE * dt
 
         total = (
             r_lin_vel + r_ang_vel + r_feet_air + r_base_height + r_alive
-            + r_ang_vel_xy + r_orientation + r_backward_vel + r_pitch_pen + r_roll_pen
+            + r_ang_vel_xy + r_orientation + r_backward_vel + r_pitch_pen + r_roll_pen + r_yaw_pen + r_lateral
             + r_fwd_progress + r_overspeed   # stability + direction: always active
             + k * (r_lin_vel_z + r_joint_mot                  # efficiency: k-scaled
                    + r_torques + r_action_rate + r_collision)
@@ -414,6 +445,8 @@ class Go1BaseEnv(gym.Env):
             "r_backward_vel":     r_backward_vel,
             "r_pitch_pen":        r_pitch_pen,
             "r_roll_pen":         r_roll_pen,
+            "r_yaw_pen":          r_yaw_pen,
+            "r_lateral":          r_lateral,
             "r_fwd_progress":     r_fwd_progress,
             "r_overspeed":        r_overspeed,
             "r_joint_mot":        r_joint_mot,
@@ -428,6 +461,8 @@ class Go1BaseEnv(gym.Env):
             "stability_scale":     stability_scale,
             "command_lin_vel_x":   float(self._target_lin_vel[0]),
             "base_lin_vel_x":      float(lin_vel[0]),
+            "base_lin_vel_y":      float(lin_vel[1]),   # v19: lateral drift (veer) diagnostic
+            "yaw_vel":             float(ang_vel[2]),   # v19: turning rate (veer) diagnostic
             "forward_vel":         float(lin_vel[0]),   # alias kept for backward compat
             "tracking_error_x":    float(self._target_lin_vel[0] - lin_vel[0]),
             "base_height":         float(self._data.qpos[2]),
