@@ -206,8 +206,8 @@ class Go1BaseEnv(gym.Env):
     def _base_obs(self) -> np.ndarray:
         lin_vel, ang_vel = self._base_velocity_body_frame()
         gravity          = self._gravity_body_frame()
-        joint_pos_rel    = self._data.qpos[7:] - NOMINAL_JOINT_POS
-        joint_vel        = self._data.qvel[6:].copy()
+        joint_pos_rel    = self._data.qpos[7:19] - NOMINAL_JOINT_POS
+        joint_vel        = self._data.qvel[6:18].copy()
         return np.concatenate([
             self._target_lin_vel,   # 2  — commanded forward/lateral speed
             gravity,                # 3  — gravity direction in body frame
@@ -305,7 +305,7 @@ class Go1BaseEnv(gym.Env):
             info["term_pitch"]    = 0.0
 
         self._prev_action    = action.copy()
-        self._prev_joint_vel = self._data.qvel[6:].copy()
+        self._prev_joint_vel = self._data.qvel[6:18].copy()
 
         return self._get_obs(), reward, terminated, truncated, info
 
@@ -403,7 +403,7 @@ class Go1BaseEnv(gym.Env):
 
         # --- efficiency penalties (curriculum-scaled by k_t) ---
         r_lin_vel_z   = -(lin_vel[2] ** 2)                                         * _W_LIN_VEL_Z   * dt
-        joint_vel     = self._data.qvel[6:]
+        joint_vel     = self._data.qvel[6:18]
         joint_accel   = (joint_vel - self._prev_joint_vel) / dt
         r_joint_mot   = -float(np.dot(joint_accel, joint_accel)
                                + np.dot(joint_vel, joint_vel))                     * _W_JOINT_MOT   * dt
@@ -537,8 +537,8 @@ class Go1BaseEnv(gym.Env):
 
     def _add_reset_noise(self) -> None:
         """Small noise on joint positions and all velocities at episode start."""
-        self._data.qpos[7:] += self.np_random.uniform(-0.05, 0.05, 12)
-        self._data.qvel[:]   = self.np_random.uniform(-0.05, 0.05, 18)
+        self._data.qpos[7:19] += self.np_random.uniform(-0.05, 0.05, 12)
+        self._data.qvel[:18]  = self.np_random.uniform(-0.05, 0.05, 18)   # trunk+joints; tile DOFs (if any) stay 0
 
     # ------------------------------------------------------------------
     # Convenience: live viewer for interactive inspection
