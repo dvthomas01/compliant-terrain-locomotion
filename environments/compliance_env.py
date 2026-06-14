@@ -71,7 +71,9 @@ _PATCH_STAGES = {
 
 
 class CompliantTerrainEnv(Go1BaseEnv):
-    def __init__(self, *args, max_level: int = _MAX_LEVEL, **kwargs):
+    def __init__(self, *args, max_level: int = _MAX_LEVEL, obs_mode: str = "B", **kwargs):
+        assert obs_mode in ("A", "B")   # "B"=89D (+foot history), "A"=49D (no history) for the obs-ablation
+        self._obs_mode = obs_mode
         kwargs.setdefault("xml_path", _COMPLIANCE_XML)
         super().__init__(*args, **kwargs)
         self._max_level = int(max_level)
@@ -106,7 +108,8 @@ class CompliantTerrainEnv(Go1BaseEnv):
     # Observation: 49D base + 24 foot-pos history + 12 foot vel + 4 contact
     # ------------------------------------------------------------------
     def _obs_space(self) -> spaces.Box:
-        return spaces.Box(low=-np.inf, high=np.inf, shape=(89,), dtype=np.float32)
+        dim = 49 if self._obs_mode == "A" else 89
+        return spaces.Box(low=-np.inf, high=np.inf, shape=(dim,), dtype=np.float32)
 
     def _foot_pos_base(self) -> np.ndarray:
         """Foot site positions in the base frame, (4,3)."""
@@ -122,6 +125,11 @@ class CompliantTerrainEnv(Go1BaseEnv):
 
     def _get_obs(self) -> np.ndarray:
         base = self._base_obs()
+        if self._obs_mode == "A":            # obs-ablation: 49D, no foot history (== Policy A's obs)
+            obs = base
+            if self._obs_noise_std > 0.0 or self._imu_bias != 0.0:
+                obs = obs + self._imu_bias + self.np_random.normal(0.0, self._obs_noise_std, obs.shape)
+            return obs.astype(np.float32)
 
         # roll the history buffer forward and write current foot xy
         foot_xy = self._foot_pos_base()[:, :2]
