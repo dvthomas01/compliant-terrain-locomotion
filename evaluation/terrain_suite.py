@@ -41,19 +41,8 @@ class EvalCompliantEnv(CompliantTerrainEnv):
     """Compliance env pinned to one fixed terrain, emitting 49D (A) or 89D (B) obs."""
 
     def __init__(self, terrain: dict, obs_mode: str, **kwargs):
-        assert obs_mode in ("A", "B")
         self._terrain = terrain
-        self._obs_mode = obs_mode
-        super().__init__(max_level=0, **kwargs)   # curriculum inert
-
-    def _obs_space(self) -> spaces.Box:
-        dim = 49 if self._obs_mode == "A" else 89
-        return spaces.Box(low=-np.inf, high=np.inf, shape=(dim,), dtype=np.float32)
-
-    def _get_obs(self) -> np.ndarray:
-        if self._obs_mode == "A":
-            return self._base_obs().astype(np.float32)
-        return super()._get_obs()                 # full 89D (history + vel + contact)
+        super().__init__(max_level=0, obs_mode=obs_mode, **kwargs)   # parent owns obs_mode; curriculum inert
 
     def reset(self, *, seed=None, options=None):
         # bypass the per-env curriculum update in CompliantTerrainEnv.reset

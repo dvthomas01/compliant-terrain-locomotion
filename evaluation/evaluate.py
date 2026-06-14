@@ -32,6 +32,9 @@ POLICIES = {
                           "checkpoints/policy_a_v24/vecnorm_final.pkl"),
     "B_compliance": ("B", "checkpoints/policy_b/policy_b_final.zip",
                           "checkpoints/policy_b/vecnorm_final.pkl"),
+    # obs-ablation: compliance-trained but 49D (no foot history)
+    "Bp_noh":       ("A", "checkpoints/policy_b_noh/policy_b_noh_final.zip",
+                          "checkpoints/policy_b_noh/vecnorm_final.pkl"),
 }
 
 
