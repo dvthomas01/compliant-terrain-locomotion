@@ -23,3 +23,6 @@ papers/*.pdf
 
 # macOS
 .DS_Store
+
+# MuJoCo runtime log (regenerable)
+MUJOCO_LOG.TXT

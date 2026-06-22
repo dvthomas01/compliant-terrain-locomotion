@@ -32,12 +32,26 @@ TT = [
     {"name": "TT7_extrap_soft", "k": 400},
 ]
 
-POLICIES = {
-    "Btrans_hist":   ("B", "checkpoints/policy_b_trans/policy_b_trans_final.zip",
-                           "checkpoints/policy_b_trans/vecnorm_final.pkl"),
-    "Btrans_nohist": ("A", "checkpoints/policy_b_trans_noh/policy_b_trans_noh_final.zip",
-                           "checkpoints/policy_b_trans_noh/vecnorm_final.pkl"),
+_SEEDS = [0, 1, 2]   # seed 0 = original dir; seeds 1,2 = *_s1/_s2 multiseed dirs
+
+# name -> (obs_mode, checkpoint_dir_base, final_zip_name, seeds)
+POLICY_SPECS = {
+    "Btrans_hist":   ("B", "policy_b_trans",     "policy_b_trans_final.zip",     _SEEDS),
+    "Btrans_nohist": ("A", "policy_b_trans_noh", "policy_b_trans_noh_final.zip", _SEEDS),
 }
+
+
+def _ckpt_paths(base_dir, final_name, seed):
+    d = base_dir if seed == 0 else f"{base_dir}_s{seed}"
+    return f"checkpoints/{d}/{final_name}", f"checkpoints/{d}/vecnorm_final.pkl"
+
+
+def iter_runs():
+    """Yield (pol_name, seed, obs_mode, model_path, vecnorm_path) for every seed."""
+    for pol_name, (obs_mode, base_dir, final_name, seeds) in POLICY_SPECS.items():
+        for seed in seeds:
+            mp, vp = _ckpt_paths(base_dir, final_name, seed)
+            yield pol_name, seed, obs_mode, mp, vp
 
 
 class EvalTransitionEnv(TransitionEnv):
@@ -87,14 +101,16 @@ def run(model, venv, n, seed):
         vels.append(info["base_lin_vel_x"]); powers.append(info["power"])
         max_x = max(max_x, info["x_pos"]); steps += 1
         if dones[0]:
-            dist = max(1e-3, abs(info["x_pos"]))
-            ep_cot.append(float(np.sum(powers)) * _DT / (mass * _G * dist))
+            dist = abs(info["x_pos"]); fell = steps < _MAX_STEPS
+            ep_cot.append((float(np.sum(powers)) * _DT / (mass * _G * max(1e-3, dist)), fell))
             ep_v.append(float(np.mean(vels)))
-            ep_fell.append(1.0 if steps < _MAX_STEPS else 0.0)
+            ep_fell.append(1.0 if fell else 0.0)
             ep_cross.append(1.0 if max_x > _CROSS_X else 0.0)
             vels, powers, steps, max_x = [], [], 0, 0.0
+    cot_clean = [c for c, fell in ep_cot if not fell]          # COT over non-fallen episodes only
     return {"forward_velocity_mean": float(np.mean(ep_v)), "fall_rate": float(np.mean(ep_fell)),
-            "cross_rate": float(np.mean(ep_cross)), "cost_of_transport": float(np.median(ep_cot))}
+            "cross_rate": float(np.mean(ep_cross)),
+            "cost_of_transport": float(np.median(cot_clean)) if cot_clean else float("nan")}
 
 
 def main():
@@ -102,17 +118,18 @@ def main():
     ap.add_argument("--seed", type=int, default=777); ap.add_argument("--out", type=str, default="evaluation/transition_results.csv")
     args = ap.parse_args()
     rows = []
-    for pol, (mode, mp, vp) in POLICIES.items():
+    for pol, seed, mode, mp, vp in iter_runs():
         model = PPO.load(mp, device="cpu")
         for ti, t in enumerate(TT):
             venv = make_venv(t["k"], mode, vp); m = run(model, venv, args.n, args.seed + ti); venv.close()
-            m.update({"policy": pol, "terrain": t["name"], "stiffness": t["k"]}); rows.append(m)
-            print(f"[{pol:14s} {t['name']:16s} k={t['k']:5d}] cross={m['cross_rate']:.2f} fall={m['fall_rate']:.2f} "
+            m.update({"policy": pol, "seed": seed, "terrain": t["name"], "stiffness": t["k"]}); rows.append(m)
+            print(f"[{pol:14s} s{seed} {t['name']:16s} k={t['k']:5d}] cross={m['cross_rate']:.2f} fall={m['fall_rate']:.2f} "
                   f"vel={m['forward_velocity_mean']:.3f} COT={m['cost_of_transport']:.2f}")
     df = pd.DataFrame(rows)
     df.to_csv(args.out, index=False); print(f"\nSaved {args.out}")
-    print("\n=== cross_rate (history vs no-history) ===")
-    print(df.pivot(index="terrain", columns="policy", values="cross_rate").to_string())
+    agg = df.groupby(["policy", "terrain"], as_index=False).agg(cross_rate=("cross_rate", "mean"))
+    print("\n=== cross_rate (seed-mean; history vs no-history) ===")
+    print(agg.pivot(index="terrain", columns="policy", values="cross_rate").to_string())
 
 
 if __name__ == "__main__":

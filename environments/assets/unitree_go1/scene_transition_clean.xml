@@ -1,0 +1,54 @@
+<mujoco model="go1 clean transition scene">
+  <include file="go1.xml"/>
+  <statistic center="0 0 0.1" extent="0.8"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="120" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <material name="rigidtile" rgba="0.55 0.6 0.65 1"/>
+    <material name="softtile"  rgba="0.85 0.45 0.2 1"/>
+  </asset>
+
+  <!-- Clean transition terrain: the ENTIRE strip is slide-joint tiles flush at z=0 (no infinite
+       plane, no raised step). Rigid sections = very stiff tiles (near-immovable). Soft zone = 5 tiles
+       whose stiffness the env sets per episode; tiles sink BELOW grade under load (range -0.15, no
+       saturation). The env sets damping c = 1.55*sqrt(k) per tile -> constant damping ratio across the
+       stiffness sweep (isolates stiffness as the difficulty axis). contype=1 conaffinity=2: tiles
+       collide with the foot (contype 1/1) but NOT each other. Tiles are MOVING bodies -> they collide
+       (static boxes do not, see memory). Top face flush at z=0 when the slide joint is at rest. -->
+  <default>
+    <default class="tile">
+      <joint type="slide" axis="0 0 1" range="-0.15 0.002"/>
+      <geom type="box" size="0.15 0.7 0.02" pos="0 0 -0.02" contype="1" conaffinity="2"
+            priority="3" condim="6" friction="0.8 0.02 0.01"/>
+    </default>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+
+    <!-- rigid approach: one big stiff tile, x in [-1.0, 1.5] -->
+    <body name="tile_rigid_approach" pos="0.25 0 0">
+      <joint name="rig_app_j" class="tile" stiffness="1000000" damping="1550"/>
+      <geom class="tile" size="1.25 0.7 0.02" material="rigidtile"/>
+    </body>
+
+    <!-- soft zone: 5 tiles, x in [1.5, 3.0], 0.3 m each. stiffness/damping set per episode by env. -->
+    <body name="tile_soft_0" pos="1.65 0 0"><joint name="soft0_j" class="tile" stiffness="1500" damping="60"/><geom class="tile" material="softtile"/></body>
+    <body name="tile_soft_1" pos="1.95 0 0"><joint name="soft1_j" class="tile" stiffness="1500" damping="60"/><geom class="tile" material="softtile"/></body>
+    <body name="tile_soft_2" pos="2.25 0 0"><joint name="soft2_j" class="tile" stiffness="1500" damping="60"/><geom class="tile" material="softtile"/></body>
+    <body name="tile_soft_3" pos="2.55 0 0"><joint name="soft3_j" class="tile" stiffness="1500" damping="60"/><geom class="tile" material="softtile"/></body>
+    <body name="tile_soft_4" pos="2.85 0 0"><joint name="soft4_j" class="tile" stiffness="1500" damping="60"/><geom class="tile" material="softtile"/></body>
+
+    <!-- rigid exit: one big stiff tile, x in [3.0, 6.0] -->
+    <body name="tile_rigid_exit" pos="4.5 0 0">
+      <joint name="rig_exit_j" class="tile" stiffness="1000000" damping="1550"/>
+      <geom class="tile" size="1.5 0.7 0.02" material="rigidtile"/>
+    </body>
+  </worldbody>
+</mujoco>
