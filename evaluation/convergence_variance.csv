@@ -1,0 +1,13 @@
+recipe,seed,run_name,terrain_level_final2M,ep_len_final2M
+B_baseline,0,policy_b,2.79,924.2
+B_baseline,1,policy_b_s1,2.02,661.3
+B_baseline,2,policy_b_s2,2.161,660.3
+Bp_noh,0,policy_b_noh,2.515,957.8
+Bp_noh,1,policy_b_noh_s1,0.772,942.5
+Bp_noh,2,policy_b_noh_s2,2.776,891.4
+Cur_gated,0,policy_b_fix_s0,2.021,654.7
+Cur_gated,1,policy_b_fix_s1,2.829,897.6
+Cur_gated,2,policy_b_fix_s2,1.341,948.4
+Entropy,0,policy_b_ent_s0,0.57,999.8
+Entropy,1,policy_b_ent_s1,2.576,914.3
+Entropy,2,policy_b_ent_s2,2.515,786.3
