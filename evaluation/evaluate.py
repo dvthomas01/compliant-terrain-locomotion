@@ -27,15 +27,29 @@ _DT        = 0.02
 _G         = 9.81
 _MAX_STEPS = 1000
 
-POLICIES = {
-    "A_rigid":      ("A", "checkpoints/policy_a_v24/policy_v24_final.zip",
-                          "checkpoints/policy_a_v24/vecnorm_final.pkl"),
-    "B_compliance": ("B", "checkpoints/policy_b/policy_b_final.zip",
-                          "checkpoints/policy_b/vecnorm_final.pkl"),
+_SEEDS = [0, 1, 2]   # seed 0 = original dir; seeds 1,2 = *_s1/_s2 multiseed dirs
+
+# name -> (obs_mode, checkpoint_dir_base, final_zip_name, seeds)
+# Policy A is single-seed (its result is categorical 0%/100% falls); B/B' use 3 seeds.
+POLICY_SPECS = {
+    "A_rigid":      ("A", "policy_a_v24", "policy_v24_final.zip",  [0]),
+    "B_compliance": ("B", "policy_b",     "policy_b_final.zip",     _SEEDS),
     # obs-ablation: compliance-trained but 49D (no foot history)
-    "Bp_noh":       ("A", "checkpoints/policy_b_noh/policy_b_noh_final.zip",
-                          "checkpoints/policy_b_noh/vecnorm_final.pkl"),
+    "Bp_noh":       ("A", "policy_b_noh", "policy_b_noh_final.zip", _SEEDS),
 }
+
+
+def _ckpt_paths(base_dir, final_name, seed):
+    d = base_dir if seed == 0 else f"{base_dir}_s{seed}"
+    return f"checkpoints/{d}/{final_name}", f"checkpoints/{d}/vecnorm_final.pkl"
+
+
+def iter_runs():
+    """Yield (pol_name, seed, obs_mode, model_path, vecnorm_path) for every seed."""
+    for pol_name, (obs_mode, base_dir, final_name, seeds) in POLICY_SPECS.items():
+        for seed in seeds:
+            model_path, vecnorm_path = _ckpt_paths(base_dir, final_name, seed)
+            yield pol_name, seed, obs_mode, model_path, vecnorm_path
 
 
 def make_venv(terrain, obs_mode, vecnorm_path):
@@ -47,9 +61,13 @@ def make_venv(terrain, obs_mode, vecnorm_path):
     return venv
 
 
+_PROGRESS_M = 2.0   # min forward distance (m) for a "real traverse" (gates out frozen-but-upright)
+_STALL_M    = 1.0   # below this distance the robot effectively froze
+
+
 def run_terrain(model, venv, n_episodes, seed):
     mass = float(venv.get_attr("robot_mass")[0])
-    ep_vels, ep_fell, ep_cot, ep_contact_var, ep_height_var = [], [], [], [], []
+    ep_vels, ep_fell, ep_cot, ep_contact_var, ep_height_var, ep_dist = [], [], [], [], [], []
     steps = 0
 
     def fresh():
@@ -66,19 +84,26 @@ def run_terrain(model, venv, n_episodes, seed):
         contacts.append(info["feet_in_contact"]); heights.append(info["base_height"])
         steps += 1
         if dones[0]:
-            dist = max(1e-3, abs(info["x_pos"]))               # forward distance travelled
+            dist = abs(info["x_pos"])                           # forward distance travelled
+            fell = steps < _MAX_STEPS                           # ended early == fell
             energy = float(np.sum(powers)) * _DT
-            ep_cot.append(energy / (mass * _G * dist))
+            ep_cot.append(energy / (mass * _G * max(1e-3, dist)))
             ep_vels.append(float(np.mean(vels)))
             ep_contact_var.append(float(np.var(contacts)))
             ep_height_var.append(float(np.var(heights)))
-            ep_fell.append(1.0 if steps < _MAX_STEPS else 0.0)  # ended early == fell
+            ep_fell.append(1.0 if fell else 0.0)
+            ep_dist.append(dist)
             vels, powers, contacts, heights = fresh(); steps = 0
+    fell = np.array(ep_fell); dist = np.array(ep_dist); cot = np.array(ep_cot)
+    cot_clean = cot[fell == 0.0]                                # COT only over non-fallen episodes
     return {
         "forward_velocity_mean": float(np.mean(ep_vels)),
         "forward_velocity_std":  float(np.std(ep_vels)),
-        "fall_rate":             float(np.mean(ep_fell)),
-        "cost_of_transport":     float(np.median(ep_cot)),  # median: robust to fallen-episode spikes
+        "fall_rate":             float(np.mean(fell)),
+        # progress-gated: a "success" must NOT fall AND actually move (freezing != survival)
+        "success_rate":          float(np.mean((fell == 0.0) & (dist > _PROGRESS_M))),
+        "stall_rate":            float(np.mean((fell == 0.0) & (dist < _STALL_M))),
+        "cost_of_transport":     float(np.median(cot_clean)) if cot_clean.size else float("nan"),
         "foot_contact_variance": float(np.mean(ep_contact_var)),
         "base_height_variance":  float(np.mean(ep_height_var)),
     }
@@ -92,28 +117,30 @@ def main():
     args = ap.parse_args()
 
     rows = []
-    for pol_name, (obs_mode, model_path, vecnorm_path) in POLICIES.items():
+    for pol_name, seed, obs_mode, model_path, vecnorm_path in iter_runs():
         model = PPO.load(model_path, device="cpu")
         for ti, terrain in enumerate(TERRAINS):
             venv = make_venv(terrain, obs_mode, vecnorm_path)
             m = run_terrain(model, venv, args.n, seed=args.seed + ti)
             venv.close()
-            m.update({"policy": pol_name, "terrain": terrain["name"]})
+            m.update({"policy": pol_name, "seed": seed, "terrain": terrain["name"]})
             rows.append(m)
-            print(f"[{pol_name:13s} {terrain['name']:16s}] "
+            print(f"[{pol_name:13s} s{seed} {terrain['name']:16s}] "
                   f"vel={m['forward_velocity_mean']:.3f}±{m['forward_velocity_std']:.3f} "
                   f"fall={m['fall_rate']:.2f} COT={m['cost_of_transport']:.2f} "
                   f"contactVar={m['foot_contact_variance']:.3f} hVar={m['base_height_variance']:.5f}")
 
-    df = pd.DataFrame(rows)[["policy", "terrain", "forward_velocity_mean", "forward_velocity_std",
-                             "fall_rate", "cost_of_transport", "foot_contact_variance",
-                             "base_height_variance"]]
+    df = pd.DataFrame(rows)[["policy", "seed", "terrain", "forward_velocity_mean", "forward_velocity_std",
+                             "fall_rate", "success_rate", "stall_rate", "cost_of_transport",
+                             "foot_contact_variance", "base_height_variance"]]
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     df.to_csv(args.out, index=False)
     print(f"\nSaved {args.out}")
-    # side-by-side fall_rate and velocity for the headline comparison
-    piv = df.pivot(index="terrain", columns="policy", values=["forward_velocity_mean", "fall_rate"])
-    print("\n=== A vs B (velocity_mean / fall_rate) ===")
+    # side-by-side fall_rate and velocity for the headline comparison (mean across seeds)
+    agg = df.groupby(["policy", "terrain"], as_index=False).agg(
+        forward_velocity_mean=("forward_velocity_mean", "mean"), fall_rate=("fall_rate", "mean"))
+    piv = agg.pivot(index="terrain", columns="policy", values=["forward_velocity_mean", "fall_rate"])
+    print("\n=== A vs B (seed-mean velocity_mean / fall_rate) ===")
     print(piv.to_string())
 
 
