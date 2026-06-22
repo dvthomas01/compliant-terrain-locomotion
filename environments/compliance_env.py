@@ -39,7 +39,7 @@ import mujoco
 import numpy as np
 from gymnasium import spaces
 
-from environments.base_env import Go1BaseEnv
+from environments.base_env import Go1BaseEnv, _MAX_STEPS
 
 _COMPLIANCE_XML = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                "assets", "unitree_go1", "scene_compliance.xml")
@@ -246,13 +246,19 @@ class CompliantTerrainEnv(Go1BaseEnv):
     # Per-env game curriculum: advance on success, retreat on failure
     # ------------------------------------------------------------------
     def reset(self, *, seed=None, options=None):
-        # update level from the episode that just ended (distance vs target)
+        # Competence-gated curriculum (reliability fix): advance ONLY after a near-complete traverse,
+        # retreat ONLY on an actual fall. The old "advance on >50% dist, else retreat" let the terrain
+        # race to hard compliance by ~2M steps (faster than the gait robustified); fragile seeds then
+        # collapsed and got stuck. Holding level when the robot survives-but-slow lets the gait
+        # consolidate before the terrain hardens.
         if getattr(self, "_step_count", 0) > 0:
-            dist = float(self._data.qpos[0])          # forward distance travelled (x)
-            if dist > 0.5 * _TARGET_DISTANCE:
-                self._level = min(self._level + 1, self._max_level)
-            else:
+            dist = float(self._data.qpos[0])              # forward distance travelled (x)
+            fell = self._step_count < _MAX_STEPS          # terminated before timeout == fell
+            if fell:
                 self._level = max(0, self._level - 1)
+            elif dist > 0.8 * _TARGET_DISTANCE:
+                self._level = min(self._level + 1, self._max_level)
+            # else: survived but slow -> hold level
         return super().reset(seed=seed, options=options)
 
     def step(self, action):

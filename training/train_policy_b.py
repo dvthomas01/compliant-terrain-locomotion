@@ -57,7 +57,9 @@ _CMD_ANG_VEL = 0.0
 _MAX_LEVEL   = 3        # Level-1 compliance curriculum only (Level 2 deferred; see compliance_env)
 
 V7_K_MAX        = 0.3
-V9_ENT_COEF     = 0.0
+V9_ENT_COEF     = 0.005   # reliability fix: small entropy bonus. ent_coef=0 (tuned for Policy A's rigid
+                          # task) let compliant-task seeds lock into different early basins -> high
+                          # convergence variance. A little exploration should make convergence seed-robust.
 V14_LOG_STD     = -1.5
 V14_TRACK_FRAC  = 0.3
 B_CHECKPOINTS = [1_000_000, 3_000_000, 6_000_000, 10_000_000, 15_000_000]
