@@ -41,7 +41,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecMonitor, VecNormalize
 from stable_baselines3.common.callbacks import CallbackList
 
-from environments.compliance_env import CompliantTerrainEnv
+from environments.rigid_env import RigidTerrainEnv
 from environments import base_env as B
 from training.ppo_config import PPOConfig
 from training.timeout_bootstrap import (
@@ -54,13 +54,12 @@ from training.timeout_bootstrap import (
 _CMD_START   = 0.0
 _CMD_TARGET  = 0.2
 _CMD_ANG_VEL = 0.0
-_MAX_LEVEL   = 3        # Level-1 compliance curriculum only (Level 2 deferred; see compliance_env)
 
 V7_K_MAX        = 0.3
 V9_ENT_COEF     = 0.0
 V14_LOG_STD     = -1.5
 V14_TRACK_FRAC  = 0.3
-B_CHECKPOINTS = [1_000_000, 3_000_000, 6_000_000, 10_000_000, 15_000_000]
+V24_CHECKPOINTS = [1_000_000, 3_000_000, 6_000_000, 10_000_000, 15_000_000]
 
 
 def _core_per_step_reward(vx, pitch, target=0.2):
@@ -86,7 +85,7 @@ def preflight(gamma=0.99):
 
 def make_env(rank, seed=0):
     def _init():
-        env = CompliantTerrainEnv(target_lin_vel=(_CMD_START, 0.0), target_ang_vel=_CMD_ANG_VEL, use_tg=True, max_level=_MAX_LEVEL)
+        env = RigidTerrainEnv(target_lin_vel=(_CMD_START, 0.0), target_ang_vel=_CMD_ANG_VEL, use_tg=False)
         env.reset(seed=seed + rank)
         return env
     return _init
@@ -114,7 +113,7 @@ class VecNormCheckpointCallback(CheckpointAtStepsCallback):
         return True
 
 
-def train(cfg, run_name="policy_b", render_freq=500_000, live_viewer=False):
+def train(cfg, run_name="policy_a_notg", render_freq=500_000, live_viewer=False):
     preflight(cfg.gamma)
     checkpoint_dir = f"checkpoints/{run_name}"
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -136,8 +135,8 @@ def train(cfg, run_name="policy_b", render_freq=500_000, live_viewer=False):
                                      advance=400.0, retreat=150.0, track_frac=V14_TRACK_FRAC)
 
     def make_render_env():
-        return CompliantTerrainEnv(render_mode="rgb_array", target_lin_vel=(command_curr.cmd, 0.0),
-                                   target_ang_vel=_CMD_ANG_VEL, use_tg=True, max_level=_MAX_LEVEL)
+        return RigidTerrainEnv(render_mode="rgb_array", target_lin_vel=(command_curr.cmd, 0.0),
+                               target_ang_vel=_CMD_ANG_VEL, use_tg=False)
 
     callbacks = [
         PenaltyCurriculumCallback(penalty_curr),
@@ -145,20 +144,20 @@ def train(cfg, run_name="policy_b", render_freq=500_000, live_viewer=False):
         AdaptiveLRCallback(kl_target=cfg.kl_target, lr_min=cfg.lr_min, lr_max=cfg.lr_max),
         RewardLoggingCallback(),
         DistributionHistogramCallback(),
-        VecNormCheckpointCallback(vec_env=vec_env, steps=B_CHECKPOINTS, save_dir=checkpoint_dir, prefix="model"),
+        VecNormCheckpointCallback(vec_env=vec_env, steps=V24_CHECKPOINTS, save_dir=checkpoint_dir, prefix="model"),
     ]
     if render_freq > 0:
         callbacks.append(VideoRenderCallback(eval_env_factory=make_render_env, render_freq=render_freq,
                                              n_episodes=3, save_dir=f"renders/{run_name}",
                                              live_viewer=live_viewer, vecnorm=vec_env))
 
-    print(f"\nPolicy B — COMPLIANCE-RANDOMIZED (89D obs, Level-1 curriculum max_level={_MAX_LEVEL}) — {cfg.total_timesteps:,} steps")
-    print(f"  Identical to Policy A v24 recipe EXCEPT: 89D obs (+foot history) and compliance-randomized terrain")
-    print(f"  Recipe (shared w/ A): roll W={B._W_ROLL}, yaw-rate W={B._W_YAW_RATE}, base-height LINEAR W={B._W_BASE_HEIGHT}, lift {B._TG_LIFT_AMP}, ACTION_SCALE 0.25")
-    print(f"  Watch: ep_len>800 across compliance; terrain_level climbs (curriculum); gait holds as floor softens\n")
+    print(f"\nPolicy A (NO TROT PRIOR ablation) — v24 recipe but use_tg=False — {cfg.total_timesteps:,} steps")
+    print(f"  Tests how much the PMTG trot prior contributes: same 49D obs + recipe, but the policy must")
+    print(f"  produce propulsion from its residual alone (no open-loop trot added to ctrl).")
+    print(f"  Expectation (per v8-v13 history): pure-RL gait does not emerge -> low vel_x / short ep_len.\n")
     model.learn(total_timesteps=cfg.total_timesteps, callback=CallbackList(callbacks), progress_bar=True)
 
-    model.save(os.path.join(checkpoint_dir, "policy_b_final"))
+    model.save(os.path.join(checkpoint_dir, "policy_v24_final"))
     vec_env.save(os.path.join(checkpoint_dir, "vecnorm_final.pkl"))
     print("\nTraining complete.")
     vec_env.close()
@@ -168,7 +167,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--n-envs", type=int, default=128)
     p.add_argument("--total-steps", type=int, default=15_000_000)
-    p.add_argument("--run-name", type=str, default="policy_b")
+    p.add_argument("--run-name", type=str, default="policy_a_v24")
     p.add_argument("--render-freq", type=int, default=500_000)
     p.add_argument("--live-viewer", action="store_true")
     a = p.parse_args()

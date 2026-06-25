@@ -27,17 +27,19 @@ _DT        = 0.02
 _G         = 9.81
 _MAX_STEPS = 1000
 
-_SEEDS = [0, 1, 2]   # seed 0 = original dir; seeds 1,2 = *_s1/_s2 multiseed dirs
+_SEEDS = [0, 1, 2, 3, 4, 5, 6, 7]   # seed 0 = original dir; seeds 1..7 = *_s1.._s7 dirs
 
-# name -> (obs_mode, checkpoint_dir_base, final_zip_name, seeds)
-# All three conditions use 3 seeds. Policy A's compliant-terrain failure is
-# categorical, but multi-seeding it confirms the rigid-terrain behaviour is
-# consistent and removes the "single-seed baseline" objection.
+# name -> (obs_mode, checkpoint_dir_base, final_zip_name, seeds, use_tg)
+# A/B/B' use 8 seeds for distributional claims against the bimodal seed variance.
+# A_notg is the trot-prior ablation (use_tg=False): same 49D obs + recipe, but no
+# open-loop trot added to ctrl, so it MUST be evaluated with use_tg=False to match.
 POLICY_SPECS = {
-    "A_rigid":      ("A", "policy_a_v24", "policy_v24_final.zip",  _SEEDS),
-    "B_compliance": ("B", "policy_b",     "policy_b_final.zip",     _SEEDS),
+    "A_rigid":      ("A", "policy_a_v24",  "policy_v24_final.zip",   _SEEDS, True),
+    "B_compliance": ("B", "policy_b",      "policy_b_final.zip",     _SEEDS, True),
     # obs-ablation: compliance-trained but 49D (no foot history)
-    "Bp_noh":       ("A", "policy_b_noh", "policy_b_noh_final.zip", _SEEDS),
+    "Bp_noh":       ("A", "policy_b_noh",  "policy_b_noh_final.zip", _SEEDS, True),
+    # prior-ablation: rigid, 49D, NO trot prior
+    "A_notg":       ("A", "policy_a_notg", "policy_v24_final.zip",   [0, 1], False),
 }
 
 
@@ -47,16 +49,16 @@ def _ckpt_paths(base_dir, final_name, seed):
 
 
 def iter_runs():
-    """Yield (pol_name, seed, obs_mode, model_path, vecnorm_path) for every seed."""
-    for pol_name, (obs_mode, base_dir, final_name, seeds) in POLICY_SPECS.items():
+    """Yield (pol_name, seed, obs_mode, use_tg, model_path, vecnorm_path) for every seed."""
+    for pol_name, (obs_mode, base_dir, final_name, seeds, use_tg) in POLICY_SPECS.items():
         for seed in seeds:
             model_path, vecnorm_path = _ckpt_paths(base_dir, final_name, seed)
-            yield pol_name, seed, obs_mode, model_path, vecnorm_path
+            yield pol_name, seed, obs_mode, use_tg, model_path, vecnorm_path
 
 
-def make_venv(terrain, obs_mode, vecnorm_path):
+def make_venv(terrain, obs_mode, vecnorm_path, use_tg=True):
     venv = DummyVecEnv([lambda: EvalCompliantEnv(terrain=terrain, obs_mode=obs_mode,
-                                                 target_lin_vel=(0.2, 0.0), use_tg=True)])
+                                                 target_lin_vel=(0.2, 0.0), use_tg=use_tg)])
     venv = VecNormalize.load(vecnorm_path, venv)
     venv.training = False
     venv.norm_reward = False
@@ -119,10 +121,10 @@ def main():
     args = ap.parse_args()
 
     rows = []
-    for pol_name, seed, obs_mode, model_path, vecnorm_path in iter_runs():
+    for pol_name, seed, obs_mode, use_tg, model_path, vecnorm_path in iter_runs():
         model = PPO.load(model_path, device="cpu")
         for ti, terrain in enumerate(TERRAINS):
-            venv = make_venv(terrain, obs_mode, vecnorm_path)
+            venv = make_venv(terrain, obs_mode, vecnorm_path, use_tg=use_tg)
             m = run_terrain(model, venv, args.n, seed=args.seed + ti)
             venv.close()
             m.update({"policy": pol_name, "seed": seed, "terrain": terrain["name"]})
