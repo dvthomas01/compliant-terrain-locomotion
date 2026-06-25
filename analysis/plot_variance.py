@@ -41,7 +41,7 @@ seed_curves("Bp_noh", C_BP, "B' (compliance, no history)", "^")
 seed_curves("B_compliance", C_B, "B (compliance + history)", "s")
 ax1.set_xticks(x); ax1.set_xticklabels(ORDER, rotation=45, ha="right")
 ax1.set_ylim(-0.05, 1.08); ax1.set_ylabel("fall rate (N=100)")
-ax1.set_title("Held-out robustness: A fails categorically;\nB / B' robust but seed-variable")
+ax1.set_title("Held-out robustness: A fails categorically past T5;\nB / B' survive softer terrain but seed-variable")
 ax1.legend(loc="center left", fontsize=9)
 ax1.annotate("training range", (0.1, 1.02), fontsize=8, color="0.4")
 ax1.annotate("extrapolation", (EXTRAP + 0.05, 1.02), fontsize=8, color="0.4")
@@ -70,8 +70,9 @@ ax2.set_ylim(0, 3.0); ax2.set_ylabel("final terrain_level (3 = softest curriculu
 ax2.set_title("Convergence is bimodal across seeds —\ntwo reliability fixes do not close it")
 ax2.margins(x=0.12)
 
-fig.suptitle("Compliance training achieves robustness, but acquisition is high-variance",
-             fontweight="bold", fontsize=13)
+fig.suptitle("Rigid-trained A fails on compliant terrain; compliance training extends "
+             "survivable softness, but acquisition is seed-variable",
+             fontweight="bold", fontsize=12)
 fig.tight_layout(rect=(0, 0, 1, 0.96))
 out = "analysis/variance_plot.png"
 fig.savefig(out, dpi=130, bbox_inches="tight")
