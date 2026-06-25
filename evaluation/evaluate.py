@@ -30,9 +30,11 @@ _MAX_STEPS = 1000
 _SEEDS = [0, 1, 2]   # seed 0 = original dir; seeds 1,2 = *_s1/_s2 multiseed dirs
 
 # name -> (obs_mode, checkpoint_dir_base, final_zip_name, seeds)
-# Policy A is single-seed (its result is categorical 0%/100% falls); B/B' use 3 seeds.
+# All three conditions use 3 seeds. Policy A's compliant-terrain failure is
+# categorical, but multi-seeding it confirms the rigid-terrain behaviour is
+# consistent and removes the "single-seed baseline" objection.
 POLICY_SPECS = {
-    "A_rigid":      ("A", "policy_a_v24", "policy_v24_final.zip",  [0]),
+    "A_rigid":      ("A", "policy_a_v24", "policy_v24_final.zip",  _SEEDS),
     "B_compliance": ("B", "policy_b",     "policy_b_final.zip",     _SEEDS),
     # obs-ablation: compliance-trained but 49D (no foot history)
     "Bp_noh":       ("A", "policy_b_noh", "policy_b_noh_final.zip", _SEEDS),

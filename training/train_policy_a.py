@@ -1,6 +1,11 @@
 """
 Train Policy A: rigid terrain baseline.
 
+DEPRECATED — DO NOT USE FOR THE ABLATION. This is a stale, more-aggressive recipe
+(log_std_init=0, no command curriculum) that does NOT match Policy B and trains
+unreliably (collapses on most seeds). The canonical Policy A used in the paper is
+`train_policy_v24.py`, which shares B's recipe exactly. Kept only for history.
+
 Runs PPO with 128 parallel environments on flat rigid ground.
 Policy A has no terrain curriculum — it specialises for rigid terrain only,
 giving it the highest possible rigid-ground performance for comparison.
