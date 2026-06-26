@@ -152,26 +152,36 @@ the *residual policy's ability to modulate the prior on soft contact*, not gains
 gait discovery — every result is "domain randomization on a trot-prior residual
 policy," stated as scope, not hidden.
 
-### 5.6 Does training convergence predict held-out robustness? (No — they decouple)
+### 5.6 What predicts a seed's robustness? (Not curriculum progress — gait speed)
 
-The natural hypothesis is "the stalled-curriculum seeds are the ones that fail at
-the compliance transition." **The data refute it.** Joining per-seed training
-`terrain_level` to per-seed eval fall rate:
+The intuitive hypothesis is "seeds that stalled low on the compliance curriculum
+are the ones that fail at the transition." We tested it by joining per-seed
+training `terrain_level` to per-seed eval fall rate (seed→checkpoint mapping
+verified against the loaded weights, e.g. eval seed 7 ↔ `checkpoints/policy_b_s7`).
 
-- **The lowest-`terrain_level` seeds are NOT the most brittle.** B's stalled seed
-  (s7, terrain_level 1.23) survives T4–T6 cleanly (falls only at T7); B′'s stalled
-  seed (s1, 0.77) likewise survives T4–T6 (fall 0.08/0.04/0.09). The transition
-  failures are instead *mid*-convergence seeds (e.g. B s1 at 2.02 fails T4).
-- **Weak correlation:** corr(terrain_level, # transition terrains survived) = 0.36
-  (B) and 0.15 (B′).
-- **Per-seed terrain responses are sometimes non-monotone** (e.g. A s3 falls at
-  T3–T4 but survives T5–T6), pointing to gait–terrain interactions rather than a
-  single softness threshold.
+**The curriculum-progress hypothesis is refuted.** B's lowest-`terrain_level` seed
+(s7 = 1.23) survives T4–T6 at fall = 0.00 (N=100 each) and only fails at T7; B's
+actual T4 failure is a *mid*-curriculum seed (s1 = 2.02). B′'s stalled seed
+(s1 = 0.77) likewise survives T4–T6. Pooled over B+B′ (16 seeds),
+corr(`terrain_level`, # transition terrains survived) = **+0.25** (weak).
 
-**Takeaway:** training-curriculum progress and held-out robustness are **largely
-decoupled** here. The seed variance is real but is *not* reducible to "how far the
-curriculum advanced," which rules out the simplest explanation and means we cannot
-yet attribute the bimodal robustness to a single training-time cause.
+**A better predictor is gait speed.** corr(rigid velocity, # survived) = **−0.40**:
+the *slower* seeds are the more robust (median split: slow seeds survive 3.1
+transition terrains, fast seeds 2.5). Within B, the brittle seeds (s1,s2,s4) are
+the fastest (0.18–0.20 m/s) and the robust seeds are slower (s7=0.095 is the
+slowest and is robust). This is the **same conservative-gait axis** as the B′ > B
+ordering (§5.1) and the T4 asymmetry (§5.4), now visible seed-by-seed.
+
+**Why curriculum progress misleads:** the curriculum advances on *distance
+traveled* (>50% of target), so a fast gait climbs to high `terrain_level` during
+training yet can be brittle on held-out soft terrain, while a slow/conservative
+gait stays low on the curriculum but generalizes. `terrain_level` conflates
+"soft-terrain competence" with "speed"; gait conservatism is the axis that tracks
+robustness.
+
+**Caveat:** at 16 seeds, corr −0.40 is *moderate*, not decisive — gait conservatism
+is a tendency, not a law, and velocity is itself a correlate (we have not run a
+controlled speed-matched intervention).
 
 ## 6. Findings (graded)
 

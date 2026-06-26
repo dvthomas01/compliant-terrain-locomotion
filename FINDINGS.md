@@ -26,8 +26,10 @@ policy contributes residual correction.
 - **No trot prior ⇒ the policy stands, not walks** (vel ≈ 0.004 m/s, 0% progress) →
   prior supplies propulsion; compliance gains are to the *residual*, not gait discovery.
 - Reliability: A 8/8 trains; B and B′ each have 1/8 stalled seed (two fixes didn't help).
-- **Convergence ≠ robustness:** the stalled-curriculum seeds are NOT the transition
-  failures (corr 0.15–0.36); training progress and held-out robustness decouple.
+- **Gait speed predicts robustness, curriculum progress doesn't:** the stalled-curriculum
+  seeds are NOT the transition failures; pooled corr(terrain_level, #survived)=+0.25 (weak)
+  vs corr(velocity, #survived)=−0.40 (slower→more robust). Curriculum advances on distance,
+  so it conflates softness-competence with speed. (Same conservative-gait axis as B′>B.)
 
 ## Negative / retracted
 
