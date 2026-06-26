@@ -136,14 +136,42 @@ earned by data): the richer 89D observation appears to encourage **more active
 adaptation** (faster, higher-contact-variance gait) that is less robust at the
 onset of compliance than B′'s simpler, more conservative gait.
 
+**The conservative gait is not free.** B′'s efficiency cost rises sharply with
+softness: median COT goes from **2.5 on rigid (T0) to ~7.8 at T5** (computed over
+all 8 surviving seeds), i.e. the robustness B′ buys on soft terrain is paid for in
+energy. (T6 COT is high-variance — one seed at 66 — so we quote T5.)
+
 ### 5.5 Trot-prior (PMTG) ablation — quantifying the confound
 
 A‑noTG (rigid, 49D, **no trot prior**, 2 seeds): on T0–T3 it **stands but does not
 walk** — velocity ≈ 0.004 m/s, **0% success** (never travels 2 m), fall_rate ≈ 0.
 With the prior, A walks at 0.21 m/s. **The PMTG prior supplies propulsion; the
-learned policy contributes residual modulation, not gait discovery.** All
-compliance results are therefore "domain randomization on a trot-prior residual
+learned policy contributes residual modulation, not gait discovery.** **Implication
+for the compliance findings:** the robustness gains in §5.1 are therefore gains in
+the *residual policy's ability to modulate the prior on soft contact*, not gains in
+gait discovery — every result is "domain randomization on a trot-prior residual
 policy," stated as scope, not hidden.
+
+### 5.6 Does training convergence predict held-out robustness? (No — they decouple)
+
+The natural hypothesis is "the stalled-curriculum seeds are the ones that fail at
+the compliance transition." **The data refute it.** Joining per-seed training
+`terrain_level` to per-seed eval fall rate:
+
+- **The lowest-`terrain_level` seeds are NOT the most brittle.** B's stalled seed
+  (s7, terrain_level 1.23) survives T4–T6 cleanly (falls only at T7); B′'s stalled
+  seed (s1, 0.77) likewise survives T4–T6 (fall 0.08/0.04/0.09). The transition
+  failures are instead *mid*-convergence seeds (e.g. B s1 at 2.02 fails T4).
+- **Weak correlation:** corr(terrain_level, # transition terrains survived) = 0.36
+  (B) and 0.15 (B′).
+- **Per-seed terrain responses are sometimes non-monotone** (e.g. A s3 falls at
+  T3–T4 but survives T5–T6), pointing to gait–terrain interactions rather than a
+  single softness threshold.
+
+**Takeaway:** training-curriculum progress and held-out robustness are **largely
+decoupled** here. The seed variance is real but is *not* reducible to "how far the
+curriculum advanced," which rules out the simplest explanation and means we cannot
+yet attribute the bimodal robustness to a single training-time cause.
 
 ## 6. Findings (graded)
 
@@ -153,10 +181,16 @@ policy," stated as scope, not hidden.
    (0.21 m/s) and most efficient (COT 1.78) but brittle (survives T5 in 3/8 seeds,
    T6 in 1/8). Compliance training extends the survivable range (B′ survives T5 in
    8/8, T6 in 7/8).
-2. **No extrapolation.** All policies fall ~100% on T8–T9 (softer than trained).
+2. **Limited extrapolation, not none.** Just past the training edge (T7,
+   solref0=0.15 vs the T6 edge 0.10), B′ retains partial robustness — **3/8 seeds
+   survive** vs B 1/8, A 0/8 — so compliance training buys a *small* margin beyond
+   the edge. But the margin is small and fragile: **all** policies collapse to
+   ~100% falls by T8–T9. The headline "no free generalization" holds; the precise
+   claim is "a narrow extrapolation margin for B′ at T7, full collapse by T8."
 3. **Foot history does NOT help, and is associated with *reduced* robustness**
    (B′ ≥ B at every transition terrain). This **reverses** the original
-   single-seed hypothesis (see negatives). Mechanism evidence in §5.4.
+   single-seed hypothesis (see negatives). Correlational evidence in §5.4 (gait
+   conservatism); we do not claim a causal mechanism.
 4. **A trains reliably; compliant-gait acquisition has a persistent ~1/8 stalled
    mode** unaffected by two interventions.
 5. **The trot prior provides propulsion** (§5.5): without it, the policy stands.

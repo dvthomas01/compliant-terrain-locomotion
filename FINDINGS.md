@@ -22,9 +22,12 @@ policy contributes residual correction.
 - **T4 asymmetry is real:** B′ uniformly robust (0.01±0.03, 8/8) while A is bimodal
   (0.25±0.38). Mechanism: at T4, velocity & contact-variance order A>B>B′ — the
   conservative gait (B′) is the robust one.
-- No extrapolation: all ~100% falls on T8–T9.
-- **No trot prior ⇒ the policy stands, not walks** (vel ≈ 0.004 m/s, 0% progress).
+- Limited extrapolation: B′ keeps a narrow margin at T7 (3/8 vs B 1/8, A 0/8); all collapse by T8–T9.
+- **No trot prior ⇒ the policy stands, not walks** (vel ≈ 0.004 m/s, 0% progress) →
+  prior supplies propulsion; compliance gains are to the *residual*, not gait discovery.
 - Reliability: A 8/8 trains; B and B′ each have 1/8 stalled seed (two fixes didn't help).
+- **Convergence ≠ robustness:** the stalled-curriculum seeds are NOT the transition
+  failures (corr 0.15–0.36); training progress and held-out robustness decouple.
 
 ## Negative / retracted
 
