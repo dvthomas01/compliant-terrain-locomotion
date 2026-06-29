@@ -134,7 +134,9 @@ robustness. The most conservative, steadiest gait (B′) is the most T4-robust;
 A's fast/aggressive gait is bimodal. Interpretation (one speculative sentence,
 earned by data): the richer 89D observation appears to encourage **more active
 adaptation** (faster, higher-contact-variance gait) that is less robust at the
-onset of compliance than B′'s simpler, more conservative gait.
+onset of compliance than B′'s simpler, more conservative gait. (§5.6 refines this:
+a speed-matched intervention shows *speed itself is not causal* — steadiness / gait
+quality is the operative axis, with velocity only a correlate.)
 
 **The conservative gait is not free.** B′'s efficiency cost rises sharply with
 softness: median COT goes from **2.5 on rigid (T0) to ~7.8 at T5** (computed over
@@ -152,36 +154,50 @@ the *residual policy's ability to modulate the prior on soft contact*, not gains
 gait discovery — every result is "domain randomization on a trot-prior residual
 policy," stated as scope, not hidden.
 
-### 5.6 What predicts a seed's robustness? (Not curriculum progress — gait speed)
+### 5.6 What predicts a seed's robustness? (Not curriculum progress, and not speed — gait *quality*)
 
-The intuitive hypothesis is "seeds that stalled low on the compliance curriculum
-are the ones that fail at the transition." We tested it by joining per-seed
-training `terrain_level` to per-seed eval fall rate (seed→checkpoint mapping
-verified against the loaded weights, e.g. eval seed 7 ↔ `checkpoints/policy_b_s7`).
+We tested two candidate predictors of per-seed compliant-terrain robustness against
+the data (seed→checkpoint mapping verified, e.g. eval seed 7 ↔ `policy_b_s7`).
 
-**The curriculum-progress hypothesis is refuted.** B's lowest-`terrain_level` seed
-(s7 = 1.23) survives T4–T6 at fall = 0.00 (N=100 each) and only fails at T7; B's
+**(a) Curriculum progress — refuted.** The intuitive hypothesis "seeds that stalled
+low on the curriculum are the transition failures" is wrong. B's lowest-
+`terrain_level` seed (s7 = 1.23) survives T4–T6 at fall = 0.00 (N=100 each); B's
 actual T4 failure is a *mid*-curriculum seed (s1 = 2.02). B′'s stalled seed
 (s1 = 0.77) likewise survives T4–T6. Pooled over B+B′ (16 seeds),
-corr(`terrain_level`, # transition terrains survived) = **+0.25** (weak).
+corr(`terrain_level`, # transition terrains survived) = **+0.25** (weak). Reason:
+the curriculum advances on *distance traveled*, so it conflates "walks fast" with
+"handles softness" — see (c) for why that matters.
 
-**A better predictor is gait speed.** corr(rigid velocity, # survived) = **−0.40**:
-the *slower* seeds are the more robust (median split: slow seeds survive 3.1
-transition terrains, fast seeds 2.5). Within B, the brittle seeds (s1,s2,s4) are
-the fastest (0.18–0.20 m/s) and the robust seeds are slower (s7=0.095 is the
-slowest and is robust). This is the **same conservative-gait axis** as the B′ > B
-ordering (§5.1) and the T4 asymmetry (§5.4), now visible seed-by-seed.
+**(b) Gait speed — correlated, but a controlled intervention shows it is NOT
+causal.** Across 16 seeds, slower seeds are *correlated* with robustness
+(corr(velocity, #survived) = −0.40). To test causality we re-evaluated each B seed
+on T5/T6 at commanded velocities {0.10, 0.15, 0.20}
+(`analysis/speed_matched_eval.py`) and compared **at matched achieved velocity**:
 
-**Why curriculum progress misleads:** the curriculum advances on *distance
-traveled* (>50% of target), so a fast gait climbs to high `terrain_level` during
-training yet can be brittle on held-out soft terrain, while a slow/conservative
-gait stays low on the curriculum but generalizes. `terrain_level` conflates
-"soft-terrain competence" with "speed"; gait conservatism is the axis that tracks
-robustness.
+| achieved velocity on T5 | brittle seeds | robust seeds |
+|--------------------------|---------------|--------------|
+| ~0.08–0.12 m/s | fall **0.95** | fall **0.00** |
+| ~0 (nearly standing) | fall 0.14 | fall 0.00 |
 
-**Caveat:** at 16 seeds, corr −0.40 is *moderate*, not decisive — gait conservatism
-is a tendency, not a law, and velocity is itself a correlate (we have not run a
-controlled speed-matched intervention).
+At the *same* forward speed, brittle seeds fall ~95% while robust seeds fall ~0%.
+Slowing a brittle seed only reduces its falls by driving velocity to ≈ 0 (it stops
+locomoting, vel −0.01 to 0.01); when a brittle seed actually moves (vel > 0.05) it
+falls 0.95. Robust seeds, by contrast, locomote at 0.10–0.16 m/s on the same
+terrain without falling. **Speed is a proxy, not the cause.**
+
+**(c) The actual driver is gait *quality/stability*** — a property some seeds find
+and others don't, only weakly correlated with speed (robust seeds are steadier:
+lower foot-contact-variance, §5.4) and *un*correlated with curriculum progress
+(because the distance-gated curriculum rewards fast gaits regardless of their
+soft-terrain stability). We do not have a single controllable training variable
+that produces it; this is the open mechanism behind the seed variance.
+
+**Honest status:** the curriculum-progress predictor is refuted; the speed
+predictor is correlational and **fails a speed-matched intervention**; what remains
+is "some seeds discover a soft-contact-stable gait," which we can measure
+(steadiness, §5.4) but not yet induce. *(Caveat: the command knob also scales PMTG
+amplitude, so the within-seed sweep is not a pure speed change; the matched-velocity
+cross-comparison above does not depend on that and is the load-bearing evidence.)*
 
 ## 6. Findings (graded)
 
@@ -200,9 +216,15 @@ controlled speed-matched intervention).
 3. **Foot history does NOT help, and is associated with *reduced* robustness**
    (B′ ≥ B at every transition terrain). This **reverses** the original
    single-seed hypothesis (see negatives). Correlational evidence in §5.4 (gait
-   conservatism); we do not claim a causal mechanism.
+   conservatism); a speed-matched intervention (§5.6) shows speed itself is **not**
+   causal — the driver is gait stability/quality — so we claim no causal mechanism.
 4. **A trains reliably; compliant-gait acquisition has a persistent ~1/8 stalled
-   mode** unaffected by two interventions.
+   mode** unaffected by two interventions. **Crucially, training reliability and
+   held-out robustness are orthogonal:** the stalled-mode seed does *not* predict
+   eval failure — a seed can stall on curriculum progression and still generalize
+   fine to compliant terrain, because curriculum level tracks *speed* (distance-
+   gated advancement), not softness tolerance (§5.6). A reader must not infer
+   "stalled seed → brittle policy."
 5. **The trot prior provides propulsion** (§5.5): without it, the policy stands.
 
 **Negative / retracted results (now explicit):**
