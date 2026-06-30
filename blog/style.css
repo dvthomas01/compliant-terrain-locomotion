@@ -118,6 +118,13 @@ a:hover { border-bottom-color: var(--primary); }
 
 strong { font-weight: 600; }
 
+a.cite {
+  border-bottom: none;
+  font-weight: 600;
+  padding: 0 1px;
+}
+a.cite sup { font-size: 0.7em; }
+
 code {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.86em;
@@ -233,19 +240,21 @@ h3 {
 }
 
 .share-btn {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
   color: var(--ink-secondary);
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: var(--r-full);
-  padding: 6px 14px;
   cursor: pointer;
-  transition: box-shadow 0.15s ease, transform 0.05s ease;
+  transition: box-shadow 0.15s ease, transform 0.05s ease, color 0.15s ease;
 }
-.share-btn:hover { box-shadow: var(--shadow-soft); }
-.share-btn:active { transform: scale(0.96); }
+.share-btn svg { width: 17px; height: 17px; fill: currentColor; display: block; }
+.share-btn:hover { box-shadow: var(--shadow-soft); color: var(--primary); }
+.share-btn:active { transform: scale(0.94); }
 
 /* ----------------------------------------------------------------------------
    Figures
@@ -271,6 +280,7 @@ figure figcaption {
   line-height: 1.45;
   color: var(--ink-faint);
   margin-top: var(--s-sm);
+  text-align: center;
 }
 figure.wide {
   /* allow the hero plot to breathe past the reading measure on large screens */
@@ -387,6 +397,50 @@ figure.wide {
   padding: var(--s-xs) 0 var(--s-xs) var(--s-lg);
   margin: var(--s-xl) 0;
 }
+
+/* ----------------------------------------------------------------------------
+   Equations
+   -------------------------------------------------------------------------- */
+
+.equation {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-style: italic;
+  font-size: 18px;
+  text-align: center;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  padding: var(--s-md) var(--s-lg);
+  margin: var(--s-lg) 0;
+  line-height: 1.9;
+  overflow-x: auto;
+}
+.equation .where {
+  display: block;
+  font-style: normal;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-faint);
+  margin-top: var(--s-xs);
+}
+.equation sub { font-size: 0.72em; }
+
+/* ----------------------------------------------------------------------------
+   References
+   -------------------------------------------------------------------------- */
+
+.references {
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+  border-top: 1px solid var(--hairline);
+  padding-top: var(--s-lg);
+}
+.references h2 { font-size: 20px; }
+.references ol { padding-left: 1.4em; margin: 0; }
+.references li { margin-bottom: var(--s-sm); }
 
 /* ----------------------------------------------------------------------------
    Native setup-details disclosure

@@ -161,7 +161,7 @@ def t0_performance(ev):
 # ============================================================================
 # 4 + 5. per-seed scatters: speed and contact-variance vs robustness
 # ============================================================================
-def scatter_vs_robustness(ps, xcol, xlabel, name, note):
+def scatter_vs_robustness(ps, xcol, xlabel, name):
     fig, ax = plt.subplots(figsize=(8.0, 5.0))
     rng = np.random.default_rng(0)
     for pol, color, label, mk in POLS:
@@ -174,8 +174,6 @@ def scatter_vs_robustness(ps, xcol, xlabel, name, note):
     ax.set_ylabel("terrains survived (of 10)")
     ax.set_ylim(3.2, 8.8)
     ax.legend(loc="best", frameon=False, fontsize=11)
-    ax.text(0.99, 0.02, note, transform=ax.transAxes, ha="right", va="bottom",
-            fontsize=10.5, color="#a39e98")
     clean(ax)
     save(fig, name)
 
@@ -215,34 +213,34 @@ def convergence_orthogonality(ev, cv, ps):
     recipe_map = {"B_baseline": "B_compliance", "Bp_noh": "Bp_noh"}
     nsurv = {(r.policy, r.seed): r.nsurv for r in ps.itertuples()}
     cats = ["B_baseline", "Bp_noh"]
-    catlab = {"B_baseline": "B\ncompliance", "Bp_noh": "B'\nno history"}
-    fig, ax = plt.subplots(figsize=(7.6, 5.0))
-    rng = np.random.default_rng(1)
+    catlab = {"B_baseline": "B\ncompliance + history", "Bp_noh": "B'\nno history"}
     robust_c, brittle_c = "#1f9d57", "#c0392b"
+    fig, ax = plt.subplots(figsize=(7.8, 5.2))
+    rng = np.random.default_rng(1)
     for i, cat in enumerate(cats):
         sub = cv[cv.recipe == cat]
         for row in sub.itertuples():
-            pol = recipe_map[cat]
-            ns = nsurv.get((pol, row.seed))
+            ns = nsurv.get((recipe_map[cat], row.seed))
             if ns is None:
                 continue
             color = robust_c if ns >= 6 else brittle_c
-            jit = rng.uniform(-0.10, 0.10)
-            ax.scatter(i + jit, row.terrain_level_final2M, s=100, color=color,
-                       edgecolor="white", linewidth=1.0, zorder=3)
+            jit = rng.uniform(-0.09, 0.09)
+            ax.scatter(i + jit, row.terrain_level_final2M, s=110, color=color,
+                       edgecolor="white", linewidth=1.2, zorder=3)
     ax.set_xticks(range(len(cats)))
-    ax.set_xticklabels([catlab[c] for c in cats])
-    ax.set_ylabel("final curriculum level reached (training)")
+    ax.set_xticklabels([catlab[c] for c in cats], fontsize=11.5)
+    ax.set_ylabel("final curriculum level reached")
     ax.set_xlim(-0.6, 1.6)
+    ax.set_ylim(0.0, 3.15)
     from matplotlib.lines import Line2D
     leg = [Line2D([0], [0], marker="o", color="white", markerfacecolor=robust_c,
-                  markersize=11, label="robust at eval (≥6 survived)"),
+                  markersize=11, label="robust at evaluation, ≥6 survived"),
            Line2D([0], [0], marker="o", color="white", markerfacecolor=brittle_c,
-                  markersize=11, label="brittle at eval (<6 survived)")]
-    ax.legend(handles=leg, loc="lower right", frameon=False, fontsize=10.5)
-    ax.text(0.01, 0.02, "curriculum progress does not predict robustness",
-            transform=ax.transAxes, fontsize=10.5, color="#a39e98")
+                  markersize=11, label="brittle at evaluation, <6 survived")]
+    ax.legend(handles=leg, loc="upper center", bbox_to_anchor=(0.5, -0.16),
+              frameon=False, fontsize=11, ncol=2)
     clean(ax)
+    fig.subplots_adjust(bottom=0.2)
     save(fig, "convergence_orthogonality.png")
 
 
@@ -263,11 +261,9 @@ def main():
     hero_variance_annotated(ev)
     t0_performance(ev)
     scatter_vs_robustness(ps, "vel_trans", "mean velocity across T4–T7 (m/s)",
-                          "velocity_vs_robustness.png",
-                          "faster A and B, fewer terrains survived")
+                          "velocity_vs_robustness.png")
     scatter_vs_robustness(ps, "cvar_trans", "foot-contact variance across T4–T7",
-                          "contactvar_vs_robustness.png",
-                          "steadier contacts, more terrains survived")
+                          "contactvar_vs_robustness.png")
     speed_matched(sm)
     convergence_orthogonality(ev, cv, ps)
     reconcile(ev)

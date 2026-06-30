@@ -25,6 +25,9 @@ From the repo root, with the project venv active.
     # Tier 2 schematics
     PYTHONPATH="$PWD" python analysis/plot_schematics.py
 
+    # Trot diagram, real Go1 top and side renders plus the phase clock
+    PYTHONPATH="$PWD" python analysis/render_trot_diagram.py
+
     # Comparison renders, A faceplant and B prime versus B
     PYTHONPATH="$PWD" python evaluation/render_blog.py
 
@@ -37,7 +40,8 @@ survival reconciliation when it runs.
 
 Three placeholders are marked in `index.html`.
 
-- The avatar, `figures/avatar_placeholder.png`, a monogram tile. Swap in a photo.
+- The avatar. The byline points at `figures/avatar.jpg`, which currently holds a
+  monogram fallback. Overwrite it with the author photo, square crops best.
 - The affiliation line in the byline, marked with the `placeholder` class.
 - `CANONICAL_URL` in the four share links, set it to the published post URL.
 

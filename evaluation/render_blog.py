@@ -128,21 +128,22 @@ def render_a_t0_vs_t6(steps=340, seeds=range(8)):
     )
 
 
-def render_bprime_vs_b(steps=340, seeds=range(8)):
+def render_bprime_vs_b(scan_steps=400, seeds=range(12)):
     print("Bprime_vs_B_t5: rolling robust B' (s7) and brittle B (s1) on T5")
     mp, vp = load(*BP_ROBUST)
     mb, vb = load(*B_BRITTLE)
-    # find a seed where B' survives T5 and B falls on T5
-    seed = None
+    # pick the seed where B' survives T5 and B stays up the LONGEST before falling,
+    # so the side-by-side shows real walking from both before B goes down
+    best = None
     for s in seeds:
-        _, f_bp = rollout(mp, vp, "T5", "A", steps, s)
-        _, f_b = rollout(mb, vb, "T5", "B", steps, s)
+        _, f_bp = rollout(mp, vp, "T5", "A", scan_steps, s)
+        _, f_b = rollout(mb, vb, "T5", "B", scan_steps, s)
         if f_bp is None and f_b is not None:
-            seed = s
-            break
-    if seed is None:
-        seed = 0
-    print(f"  using seed {seed}")
+            if best is None or f_b > best[1]:
+                best = (s, f_b)
+    seed, fall_b = best if best else (0, 120)
+    steps = min(scan_steps, fall_b + 90)   # end shortly after B falls, B' still upright
+    print(f"  using seed {seed}, B falls at {fall_b}, clip length {steps}")
     fbp, fell_bp = rollout(mp, vp, "T5", "A", steps, seed)
     fb, fell_b = rollout(mb, vb, "T5", "B", steps, seed)
     compose(
