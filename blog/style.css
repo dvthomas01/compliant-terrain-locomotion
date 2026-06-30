@@ -1,0 +1,473 @@
+/* ============================================================================
+   Compliance-Locomotion blog post.
+   Notion blog design system, all-light. Serif body, Geist sans headings.
+   One structural accent only, Notion blue, for links.
+   ========================================================================== */
+
+:root {
+  /* Surface and canvas */
+  --canvas-soft: #f6f5f4;   /* warm paper page background */
+  --surface: #ffffff;       /* cards, figure wells */
+  --hairline: #e6e6e6;      /* 1px borders, dividers */
+
+  /* Ink */
+  --ink: rgba(0, 0, 0, 0.95);
+  --ink-secondary: #31302e;
+  --ink-muted: #615d59;
+  --ink-faint: #a39e98;
+
+  /* The single structural accent */
+  --primary: #0075de;
+  --primary-active: #005bab;
+
+  /* Restrained semantic red, used only on refutation marks in claim cards */
+  --broke-red: #b3261e;
+
+  /* Sticker-palette tints, used inside figures and as faint section tags only */
+  --tag-teal: #2a9d99;
+  --tag-orange: #dd5b00;
+  --tag-purple: #391c57;
+
+  /* Type */
+  --font-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-sans: "Geist", -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-inter: "Inter", -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  /* Spacing, 8px base */
+  --s-xxs: 4px;
+  --s-xs: 8px;
+  --s-sm: 12px;
+  --s-md: 16px;
+  --s-lg: 24px;
+  --s-xl: 28px;
+  --s-xxl: 32px;
+  --s-section: 64px;
+
+  /* Radii */
+  --r-sm: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-full: 9999px;
+
+  /* Barely-there layered elevation */
+  --shadow-soft:
+    rgba(0, 0, 0, 0.01) 0 0.175px 1.041px,
+    rgba(0, 0, 0, 0.02) 0 0.8px 2.925px,
+    rgba(0, 0, 0, 0.027) 0 2.025px 7.847px,
+    rgba(0, 0, 0, 0.04) 0 4px 18px;
+
+  /* Reading measure */
+  --measure: 760px;
+}
+
+/* ----------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--canvas-soft);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 19px;
+  line-height: 1.65;
+  font-feature-settings: "lnum" 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Inter-body comparison mode. Toggles ONLY the reading body font.
+   Headings, captions, and UI stay on the sans face. */
+body.font-inter {
+  font-family: var(--font-inter);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+/* ----------------------------------------------------------------------------
+   Reading column and layout
+   -------------------------------------------------------------------------- */
+
+.reading-column {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 0 var(--s-lg);
+}
+
+.post {
+  padding-bottom: calc(var(--s-section) * 2);
+}
+
+section {
+  margin-top: var(--s-section);
+}
+
+p { margin: 0 0 var(--s-lg); }
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0, 117, 222, 0.25);
+  transition: border-color 0.15s ease;
+}
+a:hover { border-bottom-color: var(--primary); }
+
+strong { font-weight: 600; }
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.86em;
+  background: #f0eeec;
+  padding: 0.1em 0.35em;
+  border-radius: var(--r-sm);
+}
+
+/* ----------------------------------------------------------------------------
+   Headings, always on the sans face with tight tracking
+   -------------------------------------------------------------------------- */
+
+h1, h2, h3, .post-title, .eyebrow {
+  font-family: var(--font-sans);
+  color: var(--ink);
+}
+
+.post-title {
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -1.8px;
+  margin: 0 0 var(--s-md);
+}
+
+.dek {
+  font-family: var(--font-sans);
+  font-size: 21px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: -0.2px;
+  color: var(--ink-muted);
+  margin: 0 0 var(--s-xl);
+}
+
+h2 {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.7px;
+  margin: 0 0 var(--s-md);
+}
+
+h3 {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.27;
+  letter-spacing: -0.25px;
+  margin: var(--s-xl) 0 var(--s-xs);
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--tag-teal);
+  margin-bottom: var(--s-sm);
+}
+
+/* ----------------------------------------------------------------------------
+   Post header and byline
+   -------------------------------------------------------------------------- */
+
+.post-header {
+  padding-top: var(--s-section);
+}
+
+.byline {
+  display: flex;
+  align-items: center;
+  gap: var(--s-sm);
+  padding: var(--s-lg) 0;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.byline .avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-full);
+  object-fit: cover;
+  background: var(--canvas-soft);
+  flex: 0 0 auto;
+}
+
+.byline .who {
+  font-family: var(--font-sans);
+  line-height: 1.3;
+}
+.byline .who .name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+}
+.byline .who .meta {
+  font-size: 13px;
+  color: var(--ink-faint);
+}
+
+/* placeholder marker styling */
+.placeholder {
+  color: var(--tag-orange);
+  font-style: italic;
+}
+
+.share-row {
+  display: flex;
+  gap: var(--s-xs);
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-secondary);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-full);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.05s ease;
+}
+.share-btn:hover { box-shadow: var(--shadow-soft); }
+.share-btn:active { transform: scale(0.96); }
+
+/* ----------------------------------------------------------------------------
+   Figures
+   -------------------------------------------------------------------------- */
+
+figure {
+  margin: var(--s-xl) 0;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: var(--s-md);
+  box-shadow: var(--shadow-soft);
+}
+figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--r-sm);
+}
+figure figcaption {
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-faint);
+  margin-top: var(--s-sm);
+}
+figure.wide {
+  /* allow the hero plot to breathe past the reading measure on large screens */
+  margin-left: calc((var(--measure) - min(92vw, 980px)) / 2);
+  margin-right: calc((var(--measure) - min(92vw, 980px)) / 2);
+}
+
+/* ----------------------------------------------------------------------------
+   Signature component: claim / test / what broke card
+   -------------------------------------------------------------------------- */
+
+.claim-card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: var(--s-lg);
+  margin: var(--s-xl) 0;
+  box-shadow: var(--shadow-soft);
+  font-family: var(--font-sans);
+}
+.claim-card .row {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: var(--s-md);
+  padding: var(--s-sm) 0;
+}
+.claim-card .row + .row { border-top: 1px solid var(--hairline); }
+.claim-card .label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-top: 2px;
+}
+.claim-card .row.claim .body { font-weight: 600; color: var(--ink); }
+.claim-card .row.test .body { color: var(--ink-secondary); }
+.claim-card .row.broke .label { color: var(--broke-red); }
+.claim-card .row.broke .body {
+  color: var(--ink-secondary);
+}
+.claim-card .row.broke .body .verdict {
+  color: var(--broke-red);
+  font-weight: 600;
+}
+.claim-card .row.broke .body .struck {
+  text-decoration: line-through;
+  text-decoration-color: var(--broke-red);
+  text-decoration-thickness: 2px;
+  color: var(--ink-faint);
+}
+
+/* ----------------------------------------------------------------------------
+   Signature component: scoreboard
+   -------------------------------------------------------------------------- */
+
+.scoreboard {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: var(--s-lg) var(--s-xl);
+  margin: var(--s-xl) 0;
+  box-shadow: var(--shadow-soft);
+  font-family: var(--font-sans);
+}
+.scoreboard .sb-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: var(--s-md);
+}
+.scoreboard ul { list-style: none; margin: 0; padding: 0; }
+.scoreboard li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-sm);
+  padding: var(--s-xs) 0;
+  font-size: 17px;
+  color: var(--ink-secondary);
+}
+.scoreboard li .mark {
+  flex: 0 0 1.4em;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+.scoreboard li.survivor .mark { color: var(--tag-teal); }
+.scoreboard li.survivor { font-weight: 600; color: var(--ink); }
+
+/* Resolved state: strike the five tempting claims, light up the survivor. */
+.scoreboard.resolved li.claim .text {
+  text-decoration: line-through;
+  text-decoration-color: var(--broke-red);
+  text-decoration-thickness: 2px;
+  color: var(--ink-faint);
+}
+.scoreboard.resolved li.claim .mark { color: var(--broke-red); }
+.scoreboard:not(.resolved) li.survivor { opacity: 0.5; }
+.scoreboard:not(.resolved) li.survivor .text { color: var(--ink-faint); }
+
+/* ----------------------------------------------------------------------------
+   Signature component: pull-quote
+   -------------------------------------------------------------------------- */
+
+.pull-quote {
+  font-family: var(--font-sans);
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.5px;
+  color: var(--ink);
+  border-left: 3px solid var(--primary);
+  padding: var(--s-xs) 0 var(--s-xs) var(--s-lg);
+  margin: var(--s-xl) 0;
+}
+
+/* ----------------------------------------------------------------------------
+   Native setup-details disclosure
+   -------------------------------------------------------------------------- */
+
+details.setup-details {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: var(--s-md) var(--s-lg);
+  margin: var(--s-lg) 0;
+}
+details.setup-details summary {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  list-style: none;
+}
+details.setup-details summary::-webkit-details-marker { display: none; }
+details.setup-details summary::before { content: "+ "; color: var(--ink-faint); }
+details.setup-details[open] summary::before { content: "\2212 "; }
+details.setup-details .detail-body {
+  margin-top: var(--s-md);
+  font-size: 17px;
+}
+
+/* ----------------------------------------------------------------------------
+   Font-toggle control, temporary comparison aid
+   -------------------------------------------------------------------------- */
+
+.font-toggle {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--s-xs);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-full);
+  padding: 6px 8px 6px 14px;
+  box-shadow: var(--shadow-soft);
+}
+.font-toggle .ft-label { color: var(--ink-faint); }
+.font-toggle button {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+}
+.font-toggle button.active {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 500;
+}
+
+/* ----------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 840px) {
+  .post-title { font-size: 40px; letter-spacing: -1.2px; }
+  .dek { font-size: 19px; }
+  h2 { font-size: 26px; }
+  figure.wide { margin-left: 0; margin-right: 0; }
+}
+
+@media (max-width: 600px) {
+  body { font-size: 18px; }
+  .post-title { font-size: 32px; letter-spacing: -0.8px; }
+  .byline { flex-wrap: wrap; }
+  .share-row { margin-left: 0; width: 100%; }
+  .claim-card .row { grid-template-columns: 1fr; gap: var(--s-xxs); }
+  .pull-quote { font-size: 22px; }
+}
