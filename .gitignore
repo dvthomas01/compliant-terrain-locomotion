@@ -32,3 +32,6 @@ MUJOCO_LOG.TXT
 !blog/renders/
 !blog/figures/*.png
 !blog/renders/*.gif
+
+# Playwright MCP screenshot scratch
+.playwright-mcp/
