@@ -23,7 +23,7 @@
       <p class="dek">What a simulated quadruped on soft ground taught me about catching my own clean stories before they became claims.</p>
 
       <div class="byline">
-        <img class="avatar" src="figures/avatar_placeholder.png" alt="Author avatar, placeholder monogram. Swap in a photo at figures/avatar_placeholder.png." />
+        <img class="avatar" src="figures/avatar_placeholder.png" alt="Author avatar, a placeholder monogram. Swap in a photo at figures/avatar_placeholder.png." />
         <div class="who">
           <div class="name">Dami Thomas</div>
           <div class="meta"><span class="placeholder">Affiliation placeholder</span> &middot; June 30, 2026</div>
@@ -38,32 +38,223 @@
       </div>
     </header>
 
-    <!-- Section 2: Scoreboard teaser -->
-    <section id="scoreboard-teaser"></section>
+    <!-- ====================================================================
+         Section 2: Scoreboard teaser
+         ================================================================== -->
+    <section id="scoreboard-teaser">
+      <p>I spent a few months trying to teach a simulated quadruped to walk on ground softer than anything it had trained on. The experiment produced a steady stream of clean, publishable looking results. Five of them, in order, turned out to be wrong. Not wrong in the boring sense of a typo in a table. Wrong in the seductive sense. Each one was a tidy story that survived a first look, fit the prior, and would have read beautifully in a paper, right up until I tried to break it and it broke.</p>
+      <p>This post is about those five results, and the one finding that survived. Here is the running tally, with the verdicts held back for now.</p>
 
-    <!-- Section 3: Cold open -->
-    <section id="cold-open"></section>
+      <div class="scoreboard">
+        <div class="sb-title">The running tally</div>
+        <ul>
+          <li class="claim"><span class="mark">1</span><span class="text">Foot contact history is required to survive soft ground.</span></li>
+          <li class="claim"><span class="mark">2</span><span class="text">Compliance training pays for itself with a clean efficiency win.</span></li>
+          <li class="claim"><span class="mark">3</span><span class="text">Rigid training barely works, only 1 seed in 8.</span></li>
+          <li class="claim"><span class="mark">4</span><span class="text">A seed that climbs higher up the curriculum is the more robust one.</span></li>
+          <li class="claim"><span class="mark">5</span><span class="text">Slower gaits are safer. Speed is what gets the robot into trouble.</span></li>
+          <li class="survivor"><span class="mark">&check;</span><span class="text">Robustness is a soft contact stable gait that some seeds find and some do not.</span></li>
+        </ul>
+      </div>
+    </section>
 
-    <!-- Section 4: Setup, trimmed -->
-    <section id="setup"></section>
+    <!-- ====================================================================
+         Section 3: Cold open
+         ================================================================== -->
+    <section id="cold-open">
+      <h2>The first clean result, and the first correction</h2>
+      <p>The study is a controlled ablation. Three policies that are identical in every way except the ground they train on and the sensors they are allowed to use. I will describe the setup properly in a moment. The first time I ran the full evaluation, the numbers were perfect. The policy trained on compliant ground generalized to softer ground than the rigid policy. The version with a richer sensory history was both more robust and about a quarter more energy efficient. That was the result I wanted. It matched the paper I was building on. I almost wrote it down.</p>
+      <p>What saved me was a habit, not an insight. I re ran the whole thing on a second random seed, then a third, then eight. The clean story did not survive contact with the variance. The efficiency win shrank, flipped sign on some seeds, and turned out to depend on a definition I had been careless about. I had been counting any episode where the robot stayed upright as a success. A robot that freezes in place and does nothing also stays upright. Once I required that a successful episode involve actually moving forward, a number of my survivors were revealed to be statues, and the efficiency advantage was partly an artifact of measuring the cost of standing still.</p>
+      <p>That is the shape of every correction in this project. A clean number, a tempting reading, and a quiet test that dissolves it. By the end I trusted the process more than any single result, including the ones I liked.</p>
+    </section>
 
-    <!-- Section 5: Headline tradeoff -->
-    <section id="tradeoff"></section>
+    <!-- ====================================================================
+         Section 4: Setup, trimmed
+         ================================================================== -->
+    <section id="setup">
+      <h2>The setup, in one breath</h2>
+      <p>The robot is a Unitree Go1, a twelve motor quadruped, simulated in MuJoCo. The thing I vary is the softness of the ground. In MuJoCo, contact softness is a solver setting, the stiffness and damping of the contact constraint, so I can sweep a floor from rigid to spongy without changing how it looks. Every floor in this study renders as the same flat checkered plane. Only the physics underneath changes. I find that worth saying plainly, because a photo of the terrain would tell you nothing. There is nothing to see.</p>
 
-    <!-- Section 6: The arc of being wrong -->
-    <section id="arc"></section>
+      <figure>
+        <img src="figures/stiffness_gauge.png" alt="A firm to soft gradient bar labeled T0 through T9, with a marker at the T6 training edge, noting that every floor renders identically and only the contact solver stiffness changes." />
+        <figcaption>The held out softness sweep. Ten terrains, T0 rigid through T9 spongy, identical to look at, separated only by the contact solver. The policies train up to roughly T6.</figcaption>
+      </figure>
 
-    <!-- Section 7: The reversal -->
-    <section id="reversal"></section>
+      <p>Walking does not emerge from reward alone here, so every policy rides on a fixed trot prior. This is an open loop pattern generator that swings the diagonal leg pairs in a walking rhythm. The neural network does not invent the gait. It outputs small corrections on top of a gait that is already propulsive by construction. When I later removed the prior and asked the policy to find a gait on its own, it learned to stand and barely shuffle, about 0.004 meters per second against a 0.2 target. The prior supplies the propulsion. The learned part is a correction, not a discovery.</p>
 
-    <!-- Section 8: The mechanism -->
-    <section id="mechanism"></section>
+      <figure>
+        <img src="figures/pmtg_trot_schematic.png" alt="Two diagrams. On the left, a top down robot with the diagonal leg pairs FR plus RL and FL plus RR marked as cycling 180 degrees apart. On the right, the elliptical path each foot traces, with a swing phase that lifts the foot and a stance phase that pushes back for forward thrust." />
+        <figcaption>The trot prior. Diagonal leg pairs cycle half a stride apart, each foot tracing an ellipse that lifts in swing and pushes back in stance. The policy modulates this, it does not replace it.</figcaption>
+      </figure>
 
-    <!-- Section 9: The boundary -->
-    <section id="boundary"></section>
+      <p>The ablation is three policies, trained with an identical recipe. The same trot prior, the same reward, the same optimizer settings, the same command curriculum. They differ in exactly two ways. Policy A trains only on rigid ground. Policy B and Policy B prime train on a curriculum of contact softness. And the two compliance policies differ from each other only in what they can sense. B prime sees the current robot state, 49 numbers. B additionally sees a short history of where its feet have been, 89 numbers in total. That foot history is the piece the literature said would matter most. Holding everything else fixed is the entire point. Any difference at evaluation has exactly one cause. In the figures the no history policy is written B&prime;.</p>
 
-    <!-- Section 10: What it means -->
-    <section id="meaning"></section>
+      <details class="setup-details">
+        <summary>Setup details, for the curious</summary>
+        <div class="detail-body">
+          <p>The policy runs at 50 Hz and outputs twelve residual joint targets, clipped and added on top of the nominal stance and the trot trajectory. Reward is a standard nine term locomotion objective, velocity tracking plus penalties on motion, torque, and impact, with the penalty weights ramped in over training so the robot does not learn that the cheapest way to avoid penalties is to never move. Training is PPO with a timeout correction so that surviving to the end of an episode is bootstrapped as success rather than scored as a failure.</p>
+          <p>Evaluation is 100 episodes per seed per terrain, on a shared physics environment so that A, B, and B prime are judged under identical conditions. I run 8 seeds per policy. Cost of transport is computed over non fallen episodes only, and a successful episode has to make forward progress, not merely stay upright. Both of those definitions are corrections, and both of them changed conclusions, which is the subject of the rest of this post.</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ====================================================================
+         Section 5: Headline tradeoff
+         ================================================================== -->
+    <section id="tradeoff">
+      <h2>The tradeoff that did hold up</h2>
+      <p>Strip away the wrong stories and one robust result remains. There is a clean tradeoff between peak performance and robustness, and it is monotonic.</p>
+      <p>On rigid ground, its home turf, the rigid policy A is the best athlete in the room. It is the fastest, at about 0.21 meters per second against a 0.20 target, and the most energy efficient, with the lowest cost of transport. The compliance policies are slower and thirstier on rigid ground. They traded away peak performance for something else.</p>
+
+      <figure>
+        <img src="figures/t0_performance.png" alt="Two bar charts at the rigid terrain T0. The left shows forward velocity, highest for A at about 0.21, lower for B and B prime. The right shows cost of transport, lowest for A and higher for the compliance policies." />
+        <figcaption>On rigid ground the rigid policy wins on both axes that matter to an athlete. It is the fastest and the cheapest to run. The compliance policies pay a tax at home.</figcaption>
+      </figure>
+
+      <p>That something else shows up the moment the ground gets softer than the training range. As I sweep the floor from rigid toward spongy, the rigid policy falls off a cliff. The compliance policies degrade gracefully, and they do so in a strict order. Counting how many of the eight seeds keep their fall rate below one half, at the soft terrain T5 the rigid policy A holds in 3 seeds, B holds in 6, and B prime holds in all 8. One step softer, at T6, the training edge, A holds in 1, B in 5, B prime in 7. The ordering never crosses. B prime is at least as robust as B at every single terrain, and B is always ahead of A.</p>
+
+      <figure class="wide">
+        <img src="figures/hero_variance.png" alt="Fall rate versus terrain softness from T0 to T9, for the three policies, with shaded eight seed variance bands. The rigid policy A rises earliest and steepest, B is intermediate, and the no history compliance policy B prime stays lowest the longest." />
+        <figcaption>The whole study in one chart. Fall rate against softness for all three policies, with eight seed bands. Monotonic B prime over B over A, and wide bands through the transition that foreshadow the seed to seed story.</figcaption>
+      </figure>
+
+      <p>It is one thing to read a fall rate off a chart and another to watch it. Here is the rigid policy on the left, walking confidently on rigid ground, and on the right the same policy, the same weights, on ground only a little softer than it was built for.</p>
+
+      <figure>
+        <img src="renders/A_t0_vs_t6.gif" alt="Side by side simulation. On the left, Policy A walks steadily on rigid ground and stays upright. On the right, the same policy on the soft training edge terrain loses its footing and falls." />
+        <figcaption>Policy A. Left, on rigid ground, upright for the full episode. Right, the identical policy on softer ground, going down. Nothing changed but the stiffness of the floor.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ====================================================================
+         Section 6: The arc of being wrong
+         ================================================================== -->
+    <section id="arc">
+      <h2>Three more clean results, three more corrections</h2>
+      <p>The robustness ordering was real. Almost everything I first tried to say about why was not. Three separate times I found a clean explanatory story, and three times a direct test refused it. I have come to treat this pattern as the normal cost of doing the work honestly, so I will show each one in the same shape. The claim, the test, and what broke.</p>
+
+      <div class="claim-card">
+        <div class="row claim"><div class="label">Claim</div><div class="body">Rigid training is fragile. Only 1 of 8 seeds even learns to stand.</div></div>
+        <div class="row test"><div class="label">Test</div><div class="body">Re ran the eight rigid seeds and checked which training script had actually produced them.</div></div>
+        <div class="row broke"><div class="label">What broke</div><div class="body"><span class="struck">1 of 8 reliable</span> <span class="verdict">provenance bug, retracted.</span> The collapsed seeds had been trained by a stale script with a more aggressive recipe, not the one that produced the real Policy A. With the correct script all 8 rigid seeds train normally.</div></div>
+      </div>
+
+      <p>This is the one that scares me most, because it almost became a headline. There were two training scripts in the repository with names one token apart. One was the canonical recipe that produced Policy A. The other was an older, hotter recipe left over from an earlier sweep. My multi seed run picked up the wrong one, seven of eight seeds collapsed, and for an afternoon I had a dramatic finding that rigid training is barely reproducible. It was not a finding. It was a filename. Now I pin the canonical script and treat its identity as part of the result.</p>
+
+      <div class="claim-card">
+        <div class="row claim"><div class="label">Claim</div><div class="body">A seed that climbs higher up the training curriculum is the more robust one at evaluation.</div></div>
+        <div class="row test"><div class="label">Test</div><div class="body">Joined each seed's final curriculum level to its held out robustness, and looked at the correlation.</div></div>
+        <div class="row broke"><div class="label">What broke</div><div class="body"><span class="struck">convergence predicts robustness</span> <span class="verdict">refuted, correlation plus 0.25.</span> The lowest curriculum seed was among the most robust at evaluation. Training progress and held out generalization are close to independent.</div></div>
+      </div>
+
+      <p>This one was intuitive enough that a reviewer expected it, which is exactly why it was worth checking. If a seed grinds further up the softness curriculum during training, surely it has learned more about soft ground. The data says no. Plotting each seed's final curriculum level against whether it turned out robust, the two barely relate. A seed that stalled early in the curriculum can be one of the steadiest at evaluation. The practical consequence is sharp. A model selection pipeline that picks checkpoints by curriculum progress would systematically pick the wrong ones.</p>
+
+      <figure>
+        <img src="figures/convergence_orthogonality.png" alt="A dot plot of final curriculum level for the B and B prime seeds, colored by whether each seed was robust or brittle at evaluation. Robust seeds appear at both high and low curriculum levels, including the lowest, showing no clean relationship." />
+        <figcaption>Curriculum progress on the vertical axis, eval robustness by color. If the claim were true the green robust dots would sit at the top. Instead the lowest climbing seed is robust, and the brittle seeds sit in the middle.</figcaption>
+      </figure>
+
+      <div class="claim-card">
+        <div class="row claim"><div class="label">Claim</div><div class="body">Slower gaits are more robust. Speed is what gets the robot into trouble.</div></div>
+        <div class="row test"><div class="label">Test</div><div class="body">Measured the velocity to robustness correlation, then drove brittle and robust seeds to the same commanded speed and compared their fall rates.</div></div>
+        <div class="row broke"><div class="label">What broke</div><div class="body"><span class="struck">speed causes robustness</span> <span class="verdict">correlational only.</span> At matched speed the brittle seeds still fell about 0.95 of the time while the robust seeds fell about 0.00. Speed was a proxy. The brittle seeds were only safe when they were nearly standing still.</div></div>
+      </div>
+
+      <p>This was the most tempting story of all, because the correlation is genuinely there. Faster seeds are less robust, at a correlation of minus 0.40. You can see it in the spread of the seeds. The rigid policy and the history policy are the fast ones, clustered toward low survival, while the steady, slow, no history seeds survive the most terrains.</p>
+
+      <figure>
+        <img src="figures/velocity_vs_robustness.png" alt="A scatter plot of per seed velocity against the number of terrains survived, colored by policy. The rigid A seeds cluster at high speed and low survival, the no history B prime seeds at low speed and high survival." />
+        <figcaption>Per seed, faster means less robust. The rigid and history policies are the quick ones and survive fewer terrains. It looks like a mechanism. It is not.</figcaption>
+      </figure>
+
+      <p>So I tested it directly. I took the brittle seeds and the robust seeds and commanded them to walk at the same speeds, then measured how often they fell on the same soft terrain. If speed were the cause, matching speed should erase the gap. It did not. Driven to the same velocity, the brittle seeds collapsed almost every time while the robust seeds almost never fell. The only speed at which a brittle seed is safe is no speed at all. Velocity was a symptom of the real difference, not the difference itself.</p>
+
+      <figure>
+        <img src="figures/speed_matched.png" alt="A grouped bar chart of fall rate on the soft terrain T5 at three matched commanded speeds, for brittle versus robust seeds. The brittle seeds climb from 0.14 to 0.91 to 0.99 as speed increases, while the robust seeds stay at 0.00 throughout." />
+        <figcaption>The controlled test. At every matched speed the robust seeds stay at a 0.00 fall rate while the brittle seeds collapse as soon as they actually move. Whatever protects the robust seeds, it is not slowness.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ====================================================================
+         Section 7: The reversal
+         ================================================================== -->
+    <section id="reversal">
+      <h2>The result I least wanted</h2>
+      <p>All of that was scaffolding around the one prediction I most wanted to confirm, and it is the one that failed hardest. The foot contact history, the 40 extra numbers that the literature treats as essential for soft ground, did not help. B prime, the policy without history, is at least as robust as B, the policy with it, at every terrain in the transition. If anything the history hurt. The policy that could see more of its own recent motion moved faster, less conservatively, and fell sooner.</p>
+      <p>I do not have a clean mechanism for why more information made the policy worse, and I am not going to pretend one. The two honest readings are these. The richer observation may invite a more active, less steady style of adaptation that happens to be worse on soft contact. Or the larger input may simply be harder to optimize with the same training budget. Either way, the simpler policy won, and the central hypothesis of the project was wrong.</p>
+      <p>You can see the difference in how they move.</p>
+
+      <figure>
+        <img src="renders/Bprime_vs_B_t5.gif" alt="Side by side simulation on the same soft terrain. On the left, the no history policy B prime keeps a steady gait and stays upright. On the right, the history policy B moves more busily and falls." />
+        <figcaption>Same soft ground, same starting conditions. Left, B prime without history, keeping its feet under it. Right, B with history, busier and less settled, and down before the episode ends.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ====================================================================
+         Section 8: The mechanism
+         ================================================================== -->
+    <section id="mechanism">
+      <h2>What robustness actually was</h2>
+      <p>If it was not history, and not curriculum progress, and not speed, then something separated the seeds that survived softening from the ones that did not. The explanation that held up is gait quality, and specifically the steadiness of foot contact. The robust seeds settle into a gait whose foot contacts are regular and low in variance. The brittle seeds have noisier, more variable contact patterns. On soft ground, where every footfall sinks a little and the timing of support shifts under the robot, the steadier gait is the one that keeps its balance.</p>
+
+      <figure>
+        <img src="figures/contactvar_vs_robustness.png" alt="A scatter plot of per seed foot contact variance against the number of terrains survived, colored by policy. Lower contact variance is associated with surviving more terrains." />
+        <figcaption>The property that does track robustness. Seeds with steadier, lower variance foot contact survive more terrains. This one is measurable, unlike the explanations that failed.</figcaption>
+      </figure>
+
+      <p>This property is measurable, which is more than I could say for the stories that failed. What I could not do is induce it on demand. Two attempts to make training reliably find the steady gait, a curriculum gated on competence and a small exploration bonus, both failed to remove the roughly one in eight seed that never gets there. Robustness here is a discrete outcome that some training runs reach and some do not. I can see it after the fact, in the contact variance. I cannot yet reach in and turn it on.</p>
+    </section>
+
+    <!-- ====================================================================
+         Section 9: The boundary
+         ================================================================== -->
+    <section id="boundary">
+      <h2>Where it stops</h2>
+      <p>None of this is open ended. Compliance training widens the band of survivable softness. It does not grant extrapolation. Past the training edge the margin is thin. B prime holds in 3 of 8 seeds one step beyond, B in 1, A in none, and one step further than that every policy collapses to near total falls. The graceful part of the degradation lives almost entirely inside the trained range.</p>
+
+      <figure class="wide">
+        <img src="figures/hero_variance_annotated.png" alt="The same fall rate versus softness chart, now with the trained range from T0 to T6 shaded green and the extrapolation zone from T7 to T9 shaded red, with a dashed line at the training edge. All policies rise steeply into the extrapolation zone." />
+        <figcaption>The same chart, with the trained range and the extrapolation zone marked. Almost all of the useful difference between policies sits left of the dashed line. Past it, everyone falls.</figcaption>
+      </figure>
+
+      <p>So the defensible claim is narrow, and I want to state it narrowly. Randomizing contact softness during training extends the survivable softness range of a trot prior residual policy. It does not solve soft ground locomotion, and the gain it does buy is uneven from seed to seed.</p>
+    </section>
+
+    <!-- ====================================================================
+         Section 10: What it means
+         ================================================================== -->
+    <section id="meaning">
+      <h2>What I actually learned</h2>
+      <p>The scientific result is a modest, bounded, somewhat deflationary version of the one I set out to prove. Training on varied contact softness does help a quadruped generalize to softer ground, within limits. The richer proprioception that was supposed to be the key ingredient did not help. And the robustness that does appear is a fragile, seed dependent property of the gait that I can measure but not yet reliably produce. The more durable lessons are about method.</p>
+
+      <p class="pull-quote">Single seed deep reinforcement learning results are not evidence.</p>
+      <p>With seed to seed variance as large as the effect I was studying, one run reports the identity of one lucky initialization. Every headline in this project that came from a single seed was wrong. The fix is not clever. It is to pay for eight seeds before believing anything.</p>
+
+      <p class="pull-quote">Provenance is a research result, not a chore.</p>
+      <p>The scariest mistake was not a bad idea. It was running the right evaluation against the wrong checkpoint, produced by a stale script with a name one token off from the real one. It nearly became a published claim that rigid training is unreliable. Now I pin the canonical script and treat a filename like a dependency I have to verify.</p>
+
+      <p class="pull-quote">The story that ships is the one that survived an attempt to break it.</p>
+      <p>Convergence predicts robustness. Slower is safer. History matters. Each was clean, each fit a prior, and each failed a direct test. The version of this work that I trust is the residue left after I tried to falsify every part of it I liked. The parts I liked least are the parts that survived.</p>
+
+      <p class="pull-quote">Negative results are the product.</p>
+      <p>Most of the value here is in what did not hold. The history requirement, the efficiency win, the curriculum and speed explanations. Stating precisely what is not true, and how I found out, is the contribution. Here is the tally again, settled this time.</p>
+
+      <div class="scoreboard resolved">
+        <div class="sb-title">The running tally, settled</div>
+        <ul>
+          <li class="claim"><span class="mark">&cross;</span><span class="text">Foot contact history is required to survive soft ground.</span></li>
+          <li class="claim"><span class="mark">&cross;</span><span class="text">Compliance training pays for itself with a clean efficiency win.</span></li>
+          <li class="claim"><span class="mark">&cross;</span><span class="text">Rigid training barely works, only 1 seed in 8.</span></li>
+          <li class="claim"><span class="mark">&cross;</span><span class="text">A seed that climbs higher up the curriculum is the more robust one.</span></li>
+          <li class="claim"><span class="mark">&cross;</span><span class="text">Slower gaits are safer. Speed is what gets the robot into trouble.</span></li>
+          <li class="survivor"><span class="mark">&check;</span><span class="text">Robustness is a soft contact stable gait that some seeds find and some do not. Measurable as low foot contact variance.</span></li>
+        </ul>
+      </div>
+
+      <p>There are obvious next steps. Reward the steady gait directly and see whether robustness becomes reliable. Find out why history hurts, by shrinking it or by giving the larger policy more training and seeing if the gap closes. Move from solver level softness to genuinely deformable ground, the foam and mud version of the problem. Add slopes, payloads, and pushes, to learn whether the simpler policy keeps winning when the axis of difficulty changes. Each is its own experiment. Given the track record of this project, probably its own correction.</p>
+
+      <p>I set out to show that soft ground training plus richer sensing makes a quadruped robust to soft ground. Soft ground training helped, a little, within bounds. The richer sensing did not. And the robustness turned out to be a quiet property of the gait that I only learned to see by watching five cleaner explanations fail.</p>
+    </section>
 
   </main>
 
