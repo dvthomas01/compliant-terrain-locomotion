@@ -92,18 +92,16 @@ def fall_curve(ax, ev):
     x = np.arange(len(ORDER))
     for pol, color, label, mk in POLS:
         sub = ev[ev.policy == pol]
-        n = sub.seed.nunique()
         mean = np.array([sub[sub.terrain == t].fall_rate.mean() for t in ORDER])
         std = np.array([sub[sub.terrain == t].fall_rate.std() for t in ORDER])
         ax.fill_between(x, np.clip(mean - std, 0, 1), np.clip(mean + std, 0, 1),
                         color=color, alpha=0.13, linewidth=0)
-        ax.plot(x, mean, mk + "-", color=color, lw=2.6, ms=7,
-                label=f"{label}  (n={n})")
+        ax.plot(x, mean, mk + "-", color=color, lw=2.6, ms=7, label=label)
     ax.set_xticks(x)
     ax.set_xticklabels(TLAB)
     ax.set_ylim(-0.05, 1.05)
     ax.set_xlabel("terrain softness, firm → soft")
-    ax.set_ylabel("fall rate  (N=100, mean ± seed std)")
+    ax.set_ylabel("fall rate")
     clean(ax)
 
 
@@ -191,8 +189,8 @@ def speed_matched(sm):
     x = np.arange(len(cmds))
     w = 0.38
     fig, ax = plt.subplots(figsize=(7.8, 4.8))
-    ax.bar(x - w / 2, bvals, w, color=C_A, label=f"brittle seeds (n={len(brittle)})")
-    ax.bar(x + w / 2, rvals, w, color=C_BP, label=f"robust seeds (n={len(robust)})")
+    ax.bar(x - w / 2, bvals, w, color=C_A, label="brittle seeds")
+    ax.bar(x + w / 2, rvals, w, color=C_BP, label="robust seeds")
     for i, (bv, rv) in enumerate(zip(bvals, rvals)):
         ax.text(i - w / 2, bv, f"{bv:.2f}", ha="center", va="bottom", fontsize=10.5)
         ax.text(i + w / 2, rv, f"{rv:.2f}", ha="center", va="bottom", fontsize=10.5)
