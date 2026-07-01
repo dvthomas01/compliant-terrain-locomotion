@@ -39,3 +39,9 @@ MUJOCO_LOG.TXT
 # Author's private narrative/design docs — kept locally, not shared
 retrospective.md
 master_implementation_plan.md
+
+# Private working/research docs — kept locally, never shared
+CLAUDE.md
+FINDINGS.md
+results.md
+papers/md summaries/
