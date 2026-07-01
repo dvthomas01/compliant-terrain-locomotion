@@ -35,3 +35,7 @@ MUJOCO_LOG.TXT
 
 # Playwright MCP screenshot scratch
 .playwright-mcp/
+
+# Author's private narrative/design docs — kept locally, not shared
+retrospective.md
+master_implementation_plan.md

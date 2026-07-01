@@ -6,7 +6,7 @@
 # by-design 49D/89D obs differ. SB3 unset PPO seed -> independent seed per run.
 # v24 saves checkpoints/<run>/policy_v24_final.zip natively (matches the eval).
 set -u
-cd "/Users/damithomas/Documents/Locomotion on Compliant Terrain"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source .venv/bin/activate
 export PYTHONPATH="$PWD"
 

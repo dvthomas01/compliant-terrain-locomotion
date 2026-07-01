@@ -1,6 +1,6 @@
 #!/bin/bash
 set -u
-cd "/Users/damithomas/Documents/Locomotion on Compliant Terrain"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source .venv/bin/activate
 export PYTHONPATH="$PWD"
 echo "waiting for uniform eval (pid 74720) to finish..."

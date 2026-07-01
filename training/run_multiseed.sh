@@ -3,7 +3,7 @@
 # Seed-0 already exists (policy_b, policy_b_noh, policy_b_trans, policy_b_trans_noh).
 # SB3's unset PPO seed makes each run an independent seed. Rendering disabled.
 set -u
-cd "/Users/damithomas/Documents/Locomotion on Compliant Terrain"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source .venv/bin/activate
 export PYTHONPATH="$PWD"
 
