@@ -9,7 +9,7 @@
 #   B'  = train_policy_b_noh.py    (compliance, 49D, PMTG)   -> policy_b_noh_s{3..7}
 #   A_notg = train_policy_a_notg.py (rigid, 49D, NO PMTG)    -> policy_a_notg[, _s1]
 set -u
-cd "/Users/damithomas/Documents/Locomotion on Compliant Terrain"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source .venv/bin/activate
 export PYTHONPATH="$PWD"
 
