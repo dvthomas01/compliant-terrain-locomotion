@@ -26,3 +26,22 @@ papers/*.pdf
 
 # MuJoCo runtime log (regenerable)
 MUJOCO_LOG.TXT
+
+# Blog post is a self-contained deliverable: keep its own figures and renders
+# even though *.png and renders/ are ignored globally for research artifacts.
+!blog/renders/
+!blog/figures/*.png
+!blog/renders/*.gif
+
+# Playwright MCP screenshot scratch
+.playwright-mcp/
+
+# Author's private narrative/design docs — kept locally, not shared
+retrospective.md
+master_implementation_plan.md
+
+# Private working/research docs — kept locally, never shared
+CLAUDE.md
+FINDINGS.md
+results.md
+papers/md summaries/

@@ -1,6 +1,6 @@
 #!/bin/bash
 set -u
-cd "/Users/damithomas/Documents/Locomotion on Compliant Terrain"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source .venv/bin/activate; export PYTHONPATH="$PWD"
 for S in 0 1 2; do
   echo "===== $(date '+%F %T') START ent_s${S} ====="
