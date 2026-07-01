@@ -1,0 +1,16 @@
+# Core simulator and RL stack (Python 3.13)
+mujoco==3.9.0
+stable-baselines3==2.8.0
+gymnasium==1.2.3
+torch==2.12.0
+
+# Numerics, data, plotting, rendering
+numpy==2.4.6
+pandas==3.0.3
+matplotlib==3.10.9
+pillow==12.2.0
+
+# Training utilities
+tensorboard==2.20.0
+tqdm==4.68.0
+rich==15.0.0
