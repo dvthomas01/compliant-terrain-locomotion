@@ -156,7 +156,7 @@
       <p>What they purchase appears the moment the ground turns softer than the training range. Past the training edge the rigid policy fails sharply, while the compliance policies keep their footing, and they do so in a strict order. Counting how many of the eight seeds hold their fall rate below one half, at the soft terrain T5 the rigid policy A holds in <strong>3 of 8</strong> seeds, B holds in <strong>6</strong>, and B&prime; holds in <strong>all 8</strong>. One step softer, at the training edge T6, A holds in <strong>1</strong>, B in <strong>5</strong>, and B&prime; in <strong>7</strong>. The ordering never crosses. <strong>B&prime; is at least as robust as B everywhere, and B is always ahead of A.</strong></p>
 
       <figure class="wide">
-        <img src="figures/hero_variance.png" alt="Fall rate versus terrain softness from T0 to T9 for the three policies, with eight seed variance bands. The rigid policy A rises earliest, B is intermediate, and the no history policy B prime stays lowest the longest." />
+        <img src="figures/hero_variance.png?v=2" alt="Fall rate versus terrain softness from T0 to T9 for the three policies, with eight seed variance bands. The rigid policy A rises earliest, B is intermediate, and the no history policy B prime stays lowest the longest." />
         <figcaption>Fall rate against softness for all three policies, with eight seed bands. The robustness ordering is monotonic, B&prime; over B over A.</figcaption>
       </figure>
 
@@ -204,7 +204,7 @@
       <p>So I tested it directly. I commanded the brittle and the robust seeds to walk at matched speeds and measured how often each fell on the same soft terrain. If speed were the cause, matching it should erase the gap. It did not. <strong>Driven to the same velocity, the brittle seeds collapsed almost every time while the robust seeds almost never fell.</strong> The only speed at which a brittle seed is safe is no speed at all. Velocity was a symptom of the real difference, not the difference itself.</p>
 
       <figure>
-        <img src="figures/speed_matched.png" alt="A grouped bar chart of fall rate on T5 at three matched commanded speeds, brittle versus robust seeds. The brittle seeds climb from 0.14 to 0.91 to 0.99 as speed rises, the robust seeds stay at 0.00." />
+        <img src="figures/speed_matched.png?v=2" alt="A grouped bar chart of fall rate on T5 at three matched commanded speeds, brittle versus robust seeds. The brittle seeds climb from 0.14 to 0.91 to 0.99 as speed rises, the robust seeds stay at 0.00." />
         <figcaption>At every matched speed the robust seeds stay near a 0.00 fall rate while the brittle seeds collapse as soon as they move. Whatever protects the robust seeds, it is not slowness.</figcaption>
       </figure>
     </section>
@@ -247,7 +247,7 @@
       <p>The benefit has a clear edge. Compliance training widens the band of survivable softness, but it does not produce open ended extrapolation. Past the training edge the margin is thin. B&prime; holds in <strong>3 of 8</strong> seeds one step beyond, B in 1, A in none, and one step further than that every policy collapses to near total falls. Almost all of the useful separation between policies lives inside the trained range.</p>
 
       <figure class="wide">
-        <img src="figures/hero_variance_annotated.png" alt="The fall rate versus softness chart with the trained range shaded green and the extrapolation zone shaded red, with a dashed line at the training edge." />
+        <img src="figures/hero_variance_annotated.png?v=2" alt="The fall rate versus softness chart with the trained range shaded green and the extrapolation zone shaded red, with a dashed line at the training edge." />
         <figcaption>The trained range and the extrapolation zone marked. The useful difference between policies sits left of the training edge.</figcaption>
       </figure>
 
