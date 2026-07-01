@@ -1,16 +1,15 @@
-# Blog post, Five clean results, five times wrong
+# Blog post, Fast Breaks Fast
 
 A self contained, static blog post. Open `index.html` in any browser, no build step.
-Styled after the Notion blog, all light, with a serif reading body and a sans heading
-face. The body font toggle in the corner flips between Source Serif 4 and Inter so the
-author can pick a final body font. It is a temporary aid and can be removed once chosen.
+Styled after the Notion blog, all light, with a Source Serif 4 reading body and a Geist
+sans heading face.
 
 ## Files
 
 - `index.html`, the post.
 - `style.css`, the Notion style design system and components.
-- `font-toggle.js`, the serif versus Inter body toggle, progressive enhancement only.
-- `figures/`, generated data plots and schematics, plus the avatar placeholder.
+- `share.js`, wires the share buttons to the live page URL, progressive enhancement only.
+- `figures/`, generated data plots, schematics, and the author avatar.
 - `renders/`, the two comparison GIFs.
 
 ## Rebuilding the assets

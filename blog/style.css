@@ -31,7 +31,6 @@
   /* Type */
   --font-body: "Source Serif 4", Georgia, "Times New Roman", serif;
   --font-sans: "Geist", -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-inter: "Inter", -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
 
   /* Spacing, 8px base */
   --s-xxs: 4px;
@@ -78,14 +77,6 @@ body {
   font-feature-settings: "lnum" 1;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-}
-
-/* Inter-body comparison mode. Toggles ONLY the reading body font.
-   Headings, captions, and UI stay on the sans face. */
-body.font-inter {
-  font-family: var(--font-inter);
-  font-size: 18px;
-  line-height: 1.7;
 }
 
 /* ----------------------------------------------------------------------------
@@ -467,43 +458,6 @@ details.setup-details[open] summary::before { content: "\2212 "; }
 details.setup-details .detail-body {
   margin-top: var(--s-md);
   font-size: 17px;
-}
-
-/* ----------------------------------------------------------------------------
-   Font-toggle control, temporary comparison aid
-   -------------------------------------------------------------------------- */
-
-.font-toggle {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  gap: var(--s-xs);
-  font-family: var(--font-sans);
-  font-size: 12.5px;
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-full);
-  padding: 6px 8px 6px 14px;
-  box-shadow: var(--shadow-soft);
-}
-.font-toggle .ft-label { color: var(--ink-faint); }
-.font-toggle button {
-  font-family: var(--font-sans);
-  font-size: 12.5px;
-  border: none;
-  background: transparent;
-  color: var(--ink-muted);
-  padding: 4px 10px;
-  border-radius: var(--r-full);
-  cursor: pointer;
-}
-.font-toggle button.active {
-  background: var(--primary);
-  color: #fff;
-  font-weight: 500;
 }
 
 /* ----------------------------------------------------------------------------

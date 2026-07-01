@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>Fast Breaks Fast: Robustness Performance in Compliant Terrain Locomotion</title>
   <link rel="icon" href="data:," />
   <meta name="description" content="What does it actually take for a robot to handle ground it was never trained on? I ran the experiment and found the answer." />
@@ -16,7 +18,7 @@
   <meta name="twitter:image" content="figures/hero_variance.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -297,14 +299,6 @@
 
   </main>
 
-  <!-- Body-font comparison toggle, temporary aid for choosing serif vs Inter -->
-  <div class="font-toggle" role="group" aria-label="Body font">
-    <span class="ft-label">Body</span>
-    <button id="ft-serif" class="active" type="button">Serif</button>
-    <button id="ft-inter" type="button">Inter</button>
-  </div>
-
-  <script src="font-toggle.js" defer></script>
   <script src="share.js" defer></script>
 </body>
 </html>
